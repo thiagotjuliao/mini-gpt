@@ -1,0 +1,378 @@
+<title>Exercícios — Etapa 16: Cross-Entropy — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Cross-Entropy</h1>
+    <div class="meta">mini-gpt<br>o número que<br>define o aprendizado</div>
+    <div class="sub">Etapa 16 — Cross-Entropy · 15 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="16-cross-entropy.md">16-cross-entropy.md</a> e <a href="cross-entropy.html">cross-entropy.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que a perda precisa ser um único número, e não um vetor?</p>
+    <div class="options">
+      <button class="option" data-key="a">para caber num <code>Double</code></button>
+      <button class="option" data-key="b">porque o modelo tem uma saída por posição</button>
+      <button class="option" data-key="c">porque o gradiente responde "quanto muda <em>a</em> perda se eu mexer neste parâmetro" — e isso exige um alvo escalar</button>
+      <button class="option" data-key="d">não precisa; a perda pode ser vetorial, e o autograd soma no fim</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Com saída vetorial haveria um gradiente por componente, e nada diria qual seguir. A opção D descreve um atalho comum — somar para escalarizar — mas aí a soma <em>é</em> a perda, e a escolha de como somar volta a ser a pergunta (§1).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Com <code>y</code> one-hot, a que se reduz <code>L = −Σᵢ yᵢ·log(pᵢ)</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>−log(Σᵢ pᵢ)</code></button>
+      <button class="option" data-key="b"><code>−log(p_alvo)</code></button>
+      <button class="option" data-key="c"><code>1 − p_alvo</code></button>
+      <button class="option" data-key="d">a média dos <code>−log(pᵢ)</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Todos os termos com <code>yᵢ = 0</code> somem, e sobra um só. A opção A daria <code>−log(1) = 0</code> sempre, já que as probabilidades somam 1 (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Um modelo recém-inicializado, com <code>vocabSize = 65</code>, deve dar qual perda no primeiro passo?</p>
+    <div class="options">
+      <button class="option" data-key="a">≈ 4,17 — que é <code>log(65)</code></button>
+      <button class="option" data-key="b">≈ 65, o tamanho do vocabulário</button>
+      <button class="option" data-key="c">≈ 1, porque as probabilidades somam 1</button>
+      <button class="option" data-key="d">≈ 0, porque os pesos são pequenos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Com as <code>V</code> opções quase equiprováveis, <code>p_alvo ≈ 1/V</code> e <code>L ≈ −log(1/V) = log(V)</code>. Isso é um teste, não uma curiosidade: se o primeiro <code>loss</code> sair longe disso, o bug está antes do treino começar (§6).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que é perplexidade, e quanto vale num modelo aleatório?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>1/L</code>; vale 0 no modelo aleatório</button>
+      <button class="option" data-key="b">a perda média por token; vale 1</button>
+      <button class="option" data-key="c"><code>log(L)</code>; vale <code>log(V)</code></button>
+      <button class="option" data-key="d"><code>exp(L)</code>; vale exatamente <code>V</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> <code>exp(log V) = V</code>. A leitura é direta: perplexidade <code>P</code> significa hesitar como quem escolhe uniformemente entre <code>P</code> opções. Sair de 65 para 10 num vocabulário de 65 caracteres é um progresso mensurável (§6).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que <code>−log(p)</code>, e não <code>1 − p</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>1 − p</code> não é derivável</button>
+      <button class="option" data-key="b">porque <code>−log</code> é mais rápido de calcular</button>
+      <button class="option" data-key="c">porque a punição por errar com confiança é ilimitada, e somar perdas equivale a multiplicar probabilidades</button>
+      <button class="option" data-key="d">porque <code>1 − p</code> pode ser negativo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Com <code>1 − p</code>, errar com <code>p = 0.001</code> custa quase o mesmo que errar com <code>p = 0.1</code> — a diferença é 0,099. Com <code>−log</code>, custa <code>6,91</code> contra <code>2,30</code>. A opção A é falsa: <code>1 − p</code> é perfeitamente derivável (§2).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que calcular <code>softmax</code> e depois <code>log</code> é problemático?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque o gradiente do <code>log</code> não existe no <code>scalagrad</code></button>
+      <button class="option" data-key="b">porque quebra por cima (<code>e^1000</code> estoura) e por baixo (probabilidade vira zero, e <code>log(0) = −∞</code>)</button>
+      <button class="option" data-key="c">porque o <code>softmax</code> não é numericamente estável em nenhuma implementação</button>
+      <button class="option" data-key="d">porque duas operações no grafo custam o dobro de memória</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> São dois modos independentes. A opção C é injusta com o <code>softmax</code> deste projeto: ele já subtrai o máximo, e por isso <em>não</em> estoura para cima. O que ele não pode evitar é o estouro para baixo — <code>e^−800</code> não é representável, e o zero que sobra destrói o <code>log</code> seguinte (§3).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que a perda do lote é a média das <code>B·T</code> posições, e não a soma?</p>
+    <div class="options">
+      <button class="option" data-key="a">para que a escala do gradiente não dependa do tamanho do lote</button>
+      <button class="option" data-key="b">porque a soma poderia estourar o <code>Double</code></button>
+      <button class="option" data-key="c">porque a média é sempre menor que 1</button>
+      <button class="option" data-key="d">porque só a média é derivável</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Com a soma, dobrar o lote dobraria a perda e os gradientes, e a taxa de aprendizado teria que ser reajustada a cada mudança de <code>batchSize</code>. A opção C é falsa: a média vale <code>4,17</code> no início com <code>V = 65</code> (§5).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Quem faz o deslocamento de uma posição entre entrada e alvo?</p>
+    <div class="options">
+      <button class="option" data-key="a">a perda, ao comparar <code>logits[b,t]</code> com <code>targets[b,t+1]</code></button>
+      <button class="option" data-key="b">a máscara causal, dentro da atenção</button>
+      <button class="option" data-key="c">o modelo, que já devolve os logits deslocados</button>
+      <button class="option" data-key="d">o <code>BatchSampler</code> da Etapa 7, que devolve <code>targets = corpus[i+1 .. i+T]</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Os dois tensores já chegam alinhados posição a posição, e a perda <strong>não</strong> desloca nada — se deslocasse de novo, estaria comparando com o token errado. A máscara causal (opção B) garante que a previsão não enxergue a resposta, o que é outra coisa (§5).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Sobre logits <code>[B, T, V]</code>, qual eixo o <code>logSoftmax</code> deve normalizar?</p>
+    <div class="options">
+      <button class="option" data-key="a">o eixo 0, o do lote</button>
+      <button class="option" data-key="b">o eixo 1, o das posições</button>
+      <button class="option" data-key="c">o eixo 2, o do vocabulário</button>
+      <button class="option" data-key="d">todos, um depois do outro</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Cada posição tem que virar uma distribuição sobre o vocabulário. Normalizar o eixo 1 daria uma distribuição de cada token do vocabulário <em>sobre as posições</em> — números plausíveis, formato idêntico, e uma perda que mede outra coisa. É o mesmo erro que aconteceu na Etapa 12, e por isso o teste precisa de <code>T ≠ V</code> (§3).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Qual é <code>∂L/∂z</code>, o gradiente da perda em relação aos <strong>logits</strong>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>−1/p_alvo</code></button>
+      <button class="option" data-key="b"><code>p − y</code>, dividido por <code>N</code></button>
+      <button class="option" data-key="c"><code>log(p) − y</code></button>
+      <button class="option" data-key="d"><code>y − p</code>, dividido por <code>V</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A probabilidade dada menos a que deveria ter sido dada — sem logaritmo e sem divisão, porque o <code>p_a</code> do Jacobiano do softmax cancela com o <code>1/p_a</code> do <code>−log</code>. A opção A é o gradiente em relação a <code>p</code>, um passo antes. O sinal da D está invertido: o alvo tem gradiente <em>negativo</em>, e é o que faz o logit dele subir (§4).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Numa posição, a soma dos gradientes de todos os logits dá exatamente zero. Por quê?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque somar uma constante a todos os logits não muda o softmax — logo não pode mudar a perda</button>
+      <button class="option" data-key="b">porque metade dos gradientes é positiva e metade negativa</button>
+      <button class="option" data-key="c">coincidência do exemplo; com outros valores a soma é diferente de zero</button>
+      <button class="option" data-key="d">porque a perda de uma posição é sempre zero no início</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>Σ(pᵢ − yᵢ) = 1 − 1 = 0</code>, sempre. E a leitura é a invariância do softmax a deslocamento — a mesma propriedade que matou o <code>b_K</code> na Etapa 12 §8. Um gradiente que não somasse zero estaria afirmando que mover todos os logits juntos muda alguma coisa (§4).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Com <code>V = 65</code>, o primeiro passo do treino imprime <code>loss = 9.2</code>. O que isso indica?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada demais — a perda inicial é aleatória</button>
+      <button class="option" data-key="b">que o modelo já aprendeu algo, porque 9,2 é alto</button>
+      <button class="option" data-key="c">que há um bug: <code>9.2</code> é bem pior que o <code>4,17</code> de um modelo aleatório, e ser pior que aleatório exige estar errado ativamente</button>
+      <button class="option" data-key="d">que o vocabulário é maior do que você pensa</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Um modelo que chuta uniformemente paga <code>log(65) = 4,17</code>. Para pagar 9,2 ele precisa estar atribuindo probabilidade sistematicamente baixa aos tokens certos. Suspeitos, em ordem: alvos desalinhados, inicialização com desvio padrão grande demais, ou o eixo errado no <code>logSoftmax</code> (§6).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Subtrair o máximo antes de exponenciar resolve qual dos dois estouros?</p>
+    <div class="options">
+      <button class="option" data-key="a">os dois — é exatamente para isso que serve</button>
+      <button class="option" data-key="b">só o de cima; o de baixo exige calcular o log sem materializar a probabilidade</button>
+      <button class="option" data-key="c">só o de baixo</button>
+      <button class="option" data-key="d">nenhum; ele serve para acelerar o cálculo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Com o máximo subtraído, <code>softmax([0, −800])</code> ainda dá <code>[1.0, 0.0]</code> — a segunda probabilidade é <code>e^−800</code>, que não é representável. O <code>logSoftmax</code> devolve <code>[0.0, −800.0]</code> exato porque calcula <code>(zᵢ − max) − log Σ e^(zⱼ − max)</code> sem nunca formar a probabilidade (§3).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Você roda o <code>logSoftmax</code> no eixo das posições em vez do vocabulário. Qual teste reprova?</p>
+    <div class="options">
+      <button class="option" data-key="a">o gradient check nos logits</button>
+      <button class="option" data-key="b">o teste de estabilidade numérica</button>
+      <button class="option" data-key="c">o teste de formato da saída</button>
+      <button class="option" data-key="d">a comparação com um valor calculado à mão, desde que <code>T ≠ V</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> O formato da perda é escalar nos dois casos. O gradient check <em>passa</em>: a versão errada é uma função perfeitamente derivável, e o backward dela está correto — ele confere coerência, nunca intenção. A estabilidade também não muda. Só o valor denuncia, e com <code>T = V</code> nem ele, porque os dois eixos teriam o mesmo tamanho (§3 e §7).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q15</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">A implementação recomendada multiplica o <code>logSoftmax</code> por uma máscara one-hot <code>[B, T, V]</code>. Qual o custo real disso?</p>
+    <div class="options">
+      <button class="option" data-key="a">um tensor do mesmo tamanho dos logits, que já existem — não muda a ordem de memória, e a máscara precisa nascer com <code>requiresGradient = false</code></button>
+      <button class="option" data-key="b">memória <code>V</code> vezes maior que a dos logits</button>
+      <button class="option" data-key="c">nenhum: a máscara é otimizada em tempo de compilação</button>
+      <button class="option" data-key="d">o gradiente passa a ser aproximado, porque a máscara não é derivável</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Os logits já são <code>[B, T, V]</code>, então a máscara duplica esse tensor sem mudar a ordem de grandeza. A opção D inverte o fato: a máscara é uma <em>constante</em>, e o gradiente que ela deixa passar é exato. O <code>requiresGradient = false</code> importa porque senão ela viraria um passageiro na lista de parâmetros. A alternativa é um <code>gather</code> novo no núcleo, que economiza a alocação — é o que o PyTorch faz, por desempenho (§7).</div>
+  </div>
+</div>
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A fórmula, a estabilidade numérica e o gradiente p − y estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 16-cross-entropy.md e cross-entropy.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>
+
+<footer style="max-width: 760px; margin: 4em auto 0; padding: 1.2em 24px 0; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;">mini-gpt · theory/16-cross-entropy · exercícios</footer>

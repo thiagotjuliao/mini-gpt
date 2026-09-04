@@ -1,0 +1,387 @@
+<title>AdamW — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .cell-text.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.hot2 { stroke: var(--accent2); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  .axis { stroke: var(--line-strong); stroke-width: 1.2; }
+  .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-soft); margin: 0.6em 0 1.4em; font-family: "JetBrains Mono", monospace; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; vertical-align: -2px; margin-right: 6px; }
+  .swatch.h0 { background: var(--accent2-soft); border-color: var(--accent2); }
+  .swatch.h1 { background: var(--accent-soft); border-color: var(--accent); }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-hot2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>AdamW</h1>
+    <div class="meta">mini-gpt<br>do gradiente<br>ao passo</div>
+    <div class="sub">Folha 01 · Etapa 17 — AdamW · guia visual</div>
+  </div>
+
+  <p>
+    Todas as figuras usam o mesmo exemplo do capítulo: um parâmetro de três elementos,
+    <code>p₀ = [0.60, −0.20, 0.05]</code>, com gradientes <code>g₁ = [0.30, 0.03, −0.60]</code>,
+    <code>g₂ = [0.10, 0.05, −0.20]</code> e <code>g₃ = [−0.20, 0.04, −0.10]</code>.
+    Os hiperparâmetros são <code>lr = 3e-4</code>, <code>β1 = 0.9</code>, <code>β2 = 0.95</code> e <code>λ = 0.1</code>.
+  </p>
+
+  <div class="legend">
+    <span><span class="swatch h0"></span>o que o Adam faz</span>
+    <span><span class="swatch h1"></span>o que o SGD faria</span>
+  </div>
+
+  <h2><span class="num">01</span> O passo, lado a lado</h2>
+
+  <p>
+    O SGD dá um passo proporcional ao gradiente. O primeiro passo do Adam tem o mesmo
+    tamanho para os três, e esse tamanho é o <code>lr</code>. Só o sinal do gradiente sobrevive.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 330" role="img" aria-label="Comparação entre o passo do SGD e o passo do Adam para três gradientes de escalas diferentes">
+        <text class="lbl strong" x="20" y="26">SGD — passo = lr · g</text>
+        <line class="axis" x1="150" y1="36" x2="150" y2="130"></line>
+
+        <text class="lbl" x="20" y="59">g = 0.30</text>
+        <rect class="cell hot" x="150" y="46" width="90" height="18"></rect>
+        <text class="cell-text soft" x="290" y="55">9.0e-5</text>
+
+        <text class="lbl" x="20" y="89">g = 0.03</text>
+        <rect class="cell hot" x="150" y="76" width="9" height="18"></rect>
+        <text class="cell-text soft" x="290" y="85">9.0e-6</text>
+
+        <text class="lbl" x="20" y="119">g = −0.60</text>
+        <rect class="cell hot" x="150" y="106" width="180" height="18"></rect>
+        <text class="cell-text soft" x="380" y="115">1.8e-4</text>
+
+        <text class="lbl strong" x="20" y="186">Adam — passo = lr · m̂ / √v̂</text>
+        <line class="axis" x1="150" y1="196" x2="150" y2="290"></line>
+
+        <text class="lbl" x="20" y="219">g = 0.30</text>
+        <rect class="cell hot2" x="150" y="206" width="300" height="18"></rect>
+        <text class="cell-text soft" x="500" y="215">3.0e-4</text>
+
+        <text class="lbl" x="20" y="249">g = 0.03</text>
+        <rect class="cell hot2" x="150" y="236" width="300" height="18"></rect>
+        <text class="cell-text soft" x="500" y="245">3.0e-4</text>
+
+        <text class="lbl" x="20" y="279">g = −0.60</text>
+        <rect class="cell hot2" x="150" y="266" width="300" height="18"></rect>
+        <text class="cell-text soft" x="500" y="275">3.0e-4</text>
+
+        <line class="arrow ghost" x1="450" y1="200" x2="450" y2="292"></line>
+        <text class="lbl hot2" x="458" y="303">todos param no mesmo lugar: lr</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 1</span> Mesma escala nos dois painéis, com <code>3.0e-4</code> valendo 300 px.
+      Com SGD o gradiente vinte vezes menor anda vinte vezes menos. Com Adam ele anda igual.
+    </div>
+  </div>
+
+  <h2><span class="num">02</span> As duas médias móveis</h2>
+
+  <p>
+    O <code>m</code> guarda a direção e o <code>v</code> guarda a escala. A posição 0 do exemplo mostra
+    para que serve o <code>m</code>: o gradiente troca de sinal no passo 3, e o <code>m</code> só encolhe.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 300" role="img" aria-label="O gradiente da posição 0 troca de sinal no passo 3, mas a média móvel m continua positiva">
+        <text class="lbl strong" x="20" y="24">o gradiente g — posição 0</text>
+        <line class="axis" x1="60" y1="90" x2="330" y2="90"></line>
+        <text class="lbl" x="20" y="94">0</text>
+
+        <rect class="cell hot" x="90" y="45" width="46" height="45"></rect>
+        <text class="cell-text soft" x="113" y="36">+0.30</text>
+        <text class="lbl" x="103" y="108">t=1</text>
+
+        <rect class="cell hot" x="166" y="75" width="46" height="15"></rect>
+        <text class="cell-text soft" x="189" y="66">+0.10</text>
+        <text class="lbl" x="179" y="108">t=2</text>
+
+        <rect class="cell hot" x="242" y="90" width="46" height="30"></rect>
+        <text class="cell-text soft" x="265" y="134">−0.20</text>
+        <text class="lbl" x="255" y="152">t=3</text>
+
+        <text class="lbl strong" x="380" y="24">a média móvel m</text>
+        <line class="axis" x1="400" y1="90" x2="670" y2="90"></line>
+        <text class="lbl" x="378" y="94">0</text>
+
+        <rect class="cell hot2" x="430" y="45" width="46" height="45"></rect>
+        <text class="cell-text soft" x="453" y="36">0.0300</text>
+        <text class="lbl" x="443" y="108">t=1</text>
+
+        <rect class="cell hot2" x="506" y="34" width="46" height="56"></rect>
+        <text class="cell-text soft" x="529" y="25">0.0370</text>
+        <text class="lbl" x="519" y="108">t=2</text>
+
+        <rect class="cell hot2" x="582" y="70" width="46" height="20"></rect>
+        <text class="cell-text soft" x="605" y="61">0.0133</text>
+        <text class="lbl" x="595" y="108">t=3</text>
+
+        <path class="arrow hot" d="M265 165 C 265 195, 460 195, 605 175" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="300" y="212">o gradiente inverteu…</text>
+        <text class="lbl hot2" x="470" y="212">…e o m só ficou menor</text>
+
+        <text class="lbl" x="20" y="252">Escalas próprias em cada painel: o m é dez vezes menor que o g, porque</text>
+        <text class="lbl" x="20" y="270">cada gradiente novo entra com peso 1 − β1 = 0.1. A correção de viés (fig. 3)</text>
+        <text class="lbl" x="20" y="288">é o que desfaz exatamente essa diferença de escala.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 2</span> Confira à mão: <code>m₃ = 0.9 · 0.0370 + 0.1 · (−0.20) = 0.0133</code>.
+      Uma discordância isolada reduz a confiança, mas não inverte a decisão.
+    </div>
+  </div>
+
+  <h2><span class="num">03</span> A correção de viés some sozinha</h2>
+
+  <p>
+    Sem correção, o passo sai encolhido no começo. A curva mostra o fator
+    <code>(1 − β1ᵗ) / √(1 − β2ᵗ)</code>, que é quanto do passo pretendido você realmente daria.
+    Ele começa em <code>0.4472</code> e converge para 1.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 310" role="img" aria-label="Curva do fator de encolhimento do passo quando a correção de viés é omitida">
+        <line class="axis" x1="90" y1="270" x2="650" y2="270"></line>
+        <line class="axis" x1="90" y1="50" x2="90" y2="270"></line>
+
+        <line class="grid" x1="90" y1="98" x2="650" y2="98"></line>
+        <text class="lbl hot2" x="656" y="102">1.0</text>
+        <line class="grid" x1="90" y1="238" x2="650" y2="238"></line>
+        <text class="lbl" x="30" y="242">0.447</text>
+
+        <polyline class="arrow hot2" fill="none" points="90.0,238.0 103.6,197.2 117.2,169.5 130.8,149.1 144.4,133.2 157.9,120.7 171.5,110.7 185.1,102.6 198.7,96.1 212.3,90.9 225.9,86.6 239.5,83.2 253.1,80.5 266.7,78.4 280.3,76.7 293.8,75.5 307.4,74.6 321.0,74.0 334.6,73.7 348.2,73.5 361.8,73.5 375.4,73.7 389.0,73.9 402.6,74.3 416.2,74.7 429.7,75.2 443.3,75.8 456.9,76.3 470.5,77.0 484.1,77.6 497.7,78.2 511.3,78.9 524.9,79.6 538.5,80.2 552.1,80.9 565.6,81.5 579.2,82.1 592.8,82.8 606.4,83.4 620.0,84.0"></polyline>
+
+        <circle cx="90" cy="238" r="4.5" fill="var(--accent)"></circle>
+        <text class="lbl hot" x="100" y="256">t=1 · 45% do passo</text>
+
+        <circle cx="348.2" cy="73.5" r="4" fill="var(--accent)"></circle>
+        <text class="lbl hot" x="300" y="64">pico: 1.097 em t=20</text>
+
+        <text class="lbl" x="86" y="288">1</text>
+        <text class="lbl" x="205" y="288">10</text>
+        <text class="lbl" x="341" y="288">20</text>
+        <text class="lbl" x="613" y="288">40</text>
+        <text class="lbl strong" x="330" y="300">t</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 3</span> A curva passa de 1 por volta de <code>t = 9</code> e volta devagar, porque
+      <code>β2 &gt; β1</code> e os dois vieses somem em ritmos diferentes. Com a correção, a linha seria
+      constante em 1 desde o primeiro passo.
+    </div>
+  </div>
+
+  <h2><span class="num">04</span> Por que o "W" existe</h2>
+
+  <p>
+    Somar <code>λ·p</code> ao gradiente parece inofensivo. O problema é que esse termo atravessa a
+    divisão por <code>√v̂</code> junto com o resto, e sai dividido pelo tamanho do gradiente.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 300" role="img" aria-label="O decaimento via L2 se espalha por três ordens de grandeza; o do AdamW é constante">
+        <text class="lbl strong" x="20" y="24">decaimento efetivo por passo, p = 0.60</text>
+
+        <line class="axis" x1="150" y1="40" x2="150" y2="240"></line>
+        <text class="lbl" x="20" y="60">escala de g</text>
+
+        <text class="lbl" x="60" y="88">1.0</text>
+        <rect class="cell hot" x="150" y="76" width="38" height="16"></rect>
+        <text class="cell-text soft" x="230" y="85">1.8e-5</text>
+
+        <text class="lbl" x="60" y="118">0.3</text>
+        <rect class="cell hot" x="150" y="106" width="117" height="16"></rect>
+        <text class="cell-text soft" x="309" y="115">6.0e-5</text>
+
+        <text class="lbl" x="60" y="148">0.1</text>
+        <rect class="cell hot" x="150" y="136" width="188" height="16"></rect>
+        <text class="cell-text soft" x="380" y="145">1.8e-4</text>
+
+        <text class="lbl" x="60" y="178">0.03</text>
+        <rect class="cell hot" x="150" y="166" width="267" height="16"></rect>
+        <text class="cell-text soft" x="459" y="175">6.0e-4</text>
+
+        <text class="lbl" x="60" y="208">0.003</text>
+        <rect class="cell hot" x="150" y="196" width="417" height="16"></rect>
+        <text class="cell-text soft" x="609" y="205">6.0e-3</text>
+
+        <line class="arrow hot2" x1="188" y1="60" x2="188" y2="232"></line>
+        <text class="lbl hot2" x="196" y="250">AdamW: 1.8e-5, sempre — não depende de g</text>
+
+        <text class="lbl" x="150" y="278">escala logarítmica · uma década a cada 150 px · o leque abre 333×</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 4</span> As barras são o decaimento que o L2 entrega quando entra pelo gradiente.
+      A linha vertical é o do AdamW. Quem tem gradiente minúsculo é quem o modelo já resolveu —
+      e é justamente quem apanha mais do L2.
+    </div>
+  </div>
+
+  <h2><span class="num">05</span> Um passo inteiro, e o que sobrevive a ele</h2>
+
+  <p>
+    O otimizador roda depois do <code>backward()</code>. Ele lê <code>p.gradient</code>, combina com o
+    estado anterior, escreve em <code>p.data</code> e devolve uma instância nova com <code>t + 1</code>.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 340" role="img" aria-label="Diagrama do passo do AdamW: gradiente e estado entram, parâmetro atualizado e estado novo saem">
+        <rect class="cell" x="20" y="40" width="120" height="42"></rect>
+        <text class="cell-text" x="80" y="61">p.gradient</text>
+        <text class="cell-text soft" x="80" y="98">quem preencheu:</text>
+        <text class="cell-text soft" x="80" y="113">backward()</text>
+
+        <rect class="cell ghost" x="20" y="170" width="120" height="60"></rect>
+        <text class="cell-text" x="80" y="192">m, v, t</text>
+        <text class="cell-text soft" x="80" y="212">do passo anterior</text>
+
+        <path class="arrow" d="M140 61 L 210 61" marker-end="url(#arrowhead)"></path>
+        <path class="arrow" d="M140 200 L 210 200" marker-end="url(#arrowhead)"></path>
+
+        <rect class="cell hot2" x="212" y="40" width="150" height="190"></rect>
+        <text class="cell-text hot2" x="287" y="66">AdamW.step()</text>
+        <text class="cell-text soft" x="287" y="92">m ← β1·m + 0.1·g</text>
+        <text class="cell-text soft" x="287" y="112">v ← β2·v + 0.05·g²</text>
+        <text class="cell-text soft" x="287" y="132">m̂ = m/(1−β1ᵗ)</text>
+        <text class="cell-text soft" x="287" y="152">v̂ = v/(1−β2ᵗ)</text>
+        <text class="cell-text soft" x="287" y="178">passo = lr·m̂/(√v̂+ε)</text>
+        <text class="cell-text soft" x="287" y="198">decay = lr·λ·p</text>
+        <text class="cell-text soft" x="287" y="218">values = p − decay − passo</text>
+
+        <path class="arrow hot" d="M362 90 L 440 90" marker-end="url(#arrowhead-hot)"></path>
+        <path class="arrow hot2" d="M362 190 L 440 190" marker-end="url(#arrowhead-hot2)"></path>
+
+        <rect class="cell hot" x="442" y="60" width="230" height="62"></rect>
+        <text class="cell-text hot" x="557" y="82">p.updateData(values)</text>
+        <text class="cell-text soft" x="557" y="104">muta o data — exige contiguidade</text>
+
+        <rect class="cell hot2" x="442" y="160" width="230" height="62"></rect>
+        <text class="cell-text hot2" x="557" y="182">AdamW novo, com t + 1</text>
+        <text class="cell-text soft" x="557" y="204">m, v e t vivem aqui, imutáveis</text>
+
+        <path class="arrow ghost" d="M557 222 C 557 270, 80 275, 80 234" marker-end="url(#arrowhead-ghost)"></path>
+        <text class="lbl" x="250" y="288">o estado do passo seguinte é a instância devolvida por este</text>
+
+        <text class="lbl hot" x="20" y="318">o único caminho de escrita: uma porta só, com require(isContiguous)</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 5</span> Duas saídas, e naturezas opostas. O parâmetro é mutado no lugar, porque
+      outros nós do grafo guardam a referência dele. O estado do otimizador não é mutado: ele volta
+      como instância nova, e o loop de treino da Etapa 18 o carrega num <code>foldLeft</code>.
+    </div>
+  </div>
+
+  <h2><span class="num">06</span> O caso que o teste precisa cobrir</h2>
+
+  <p>
+    Esquecer a correção de viés não trava nada, e a perda continua caindo. O primeiro passo é o
+    único lugar onde o erro é grande o bastante para um teste enxergar.
+  </p>
+
+  <pre>t = 1, com correção      |passo| = 3.0e-4   ← exatamente lr, para os três gradientes
+t = 1, sem correção      |passo| = 1.3e-4   ← 45% do pretendido
+
+t = 100, com correção    |passo| ≈ lr · (m̂/√v̂)
+t = 100, sem correção    diferença de 0.3% — invisível em qualquer gráfico</pre>
+
+  <p>
+    É a mesma lição da Etapa 16, onde <code>softmax</code> seguido de <code>log</code> passou em catorze
+    dos quinze testes. Código que só erra "um pouco" exige teste no regime onde o erro é grande.
+  </p>
+
+  <footer>mini-gpt · theory/17-adamw-optimizer · guia visual</footer>
+</div>

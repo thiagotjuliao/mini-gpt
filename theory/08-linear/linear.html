@@ -1,0 +1,239 @@
+<title>Camada Linear — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12.5px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 11px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-ghost" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Camada Linear</h1>
+    <div class="meta">mini-gpt<br>y = xW + b</div>
+    <div class="sub">Folha 01 · Etapa 8 — Camada Linear · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> Forward: cada coluna de W é um neurônio</h2>
+  <p>
+    <code>x=[1,2]</code>, <code>W=[[0.1,0.3],[0.2,0.4]]</code>, <code>b=[0.01,-0.02]</code> — o mesmo exemplo de
+    <code>08-linear.md</code> §2. A coluna 1 de <code>W</code> (destacada) participa <strong>só</strong> do cálculo de
+    <code>y1</code> — nenhuma outra saída enxerga esses pesos.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 230" width="460">
+        <text x="45" y="18" class="lbl strong" text-anchor="middle">x [1×2]</text>
+        <text x="170" y="18" class="lbl strong" text-anchor="middle">W [2×2]</text>
+
+        <rect x="20" y="34" width="50" height="32" class="cell"></rect><text x="45" y="50" class="cell-text">x0=1</text>
+        <rect x="20" y="88" width="50" height="32" class="cell"></rect><text x="45" y="104" class="cell-text">x1=2</text>
+
+        <text x="145" y="30" class="lbl soft" text-anchor="middle">neurônio 0</text>
+        <rect x="120" y="34" width="50" height="32" class="cell ghost"></rect><text x="145" y="50" class="cell-text soft">0.1</text>
+        <rect x="120" y="88" width="50" height="32" class="cell ghost"></rect><text x="145" y="104" class="cell-text soft">0.2</text>
+
+        <text x="205" y="30" class="lbl hot" text-anchor="middle">neurônio 1</text>
+        <rect x="180" y="34" width="50" height="32" class="cell hot"></rect><text x="205" y="50" class="cell-text hot">0.3</text>
+        <rect x="180" y="88" width="50" height="32" class="cell hot"></rect><text x="205" y="104" class="cell-text hot">0.4</text>
+
+        <path d="M70,50 L120,50" class="arrow ghost" marker-end="url(#arrowhead-ghost)"></path>
+        <path d="M70,104 L120,104" class="arrow ghost" marker-end="url(#arrowhead-ghost)"></path>
+        <path d="M70,50 Q100,50 100,77 Q100,104 180,50" class="arrow hot" marker-end="url(#arrowhead-hot)" fill="none"></path>
+        <path d="M70,104 L180,104" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+
+        <circle cx="290" cy="77" r="14" class="cell hot"></circle><text x="290" y="78" class="cell-text hot">Σ</text>
+        <path d="M230,50 Q265,50 285,66" class="arrow hot" marker-end="url(#arrowhead-hot)" fill="none"></path>
+        <path d="M230,104 Q265,104 285,88" class="arrow hot" marker-end="url(#arrowhead-hot)" fill="none"></path>
+
+        <circle cx="290" cy="175" r="14" class="cell ghost"></circle><text x="290" y="176" class="cell-text soft">Σ</text>
+        <path d="M170,50 Q245,90 285,163" class="arrow ghost" marker-end="url(#arrowhead-ghost)" fill="none"></path>
+        <path d="M170,104 Q230,140 285,175" class="arrow ghost" marker-end="url(#arrowhead-ghost)" fill="none"></path>
+
+        <rect x="325" y="61" width="40" height="30" class="cell hot"></rect><text x="345" y="76" class="cell-text hot">b1</text><text x="345" y="88" class="cell-text hot" style="font-size:10px">-0.02</text>
+        <path d="M304,77 L325,76" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+
+        <rect x="325" y="160" width="40" height="30" class="cell ghost"></rect><text x="345" y="175" class="cell-text soft">b0</text><text x="345" y="187" class="cell-text soft" style="font-size:10px">0.01</text>
+        <path d="M304,175 L325,175" class="arrow ghost" marker-end="url(#arrowhead-ghost)"></path>
+
+        <rect x="390" y="60" width="55" height="34" class="cell hot"></rect><text x="417" y="74" class="cell-text hot">y1</text><text x="417" y="88" class="cell-text hot" style="font-size:10px">1.08</text>
+        <path d="M365,76 L390,76" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+
+        <rect x="390" y="158" width="55" height="34" class="cell ghost"></rect><text x="417" y="172" class="cell-text soft">y0</text><text x="417" y="186" class="cell-text soft" style="font-size:10px">0.51</text>
+        <path d="M365,175 L390,175" class="arrow ghost" marker-end="url(#arrowhead-ghost)"></path>
+
+        <text x="230" y="220" class="lbl" text-anchor="middle">y1 = x0·w01 + x1·w11 + b1 = 1·0.3 + 2·0.4 - 0.02 = 1.08</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 1</span> Cada coluna de <code>W</code> faz seu próprio produto escalar com o mesmo <code>x</code> — as colunas nunca se misturam. O caminho esmaecido mostra que o cálculo de <code>y0</code> acontece em paralelo, independente, com a coluna 0.</div>
+  </div>
+
+  <h2><span class="num">§2</span> Backward: composição de <code>matmul</code> + <code>add</code>, nada novo</h2>
+  <p>
+    <code>Linear</code> não define backward próprio — <code>dx</code>/<code>dW</code> vêm do backward de <code>matmul</code>
+    (Etapa 3 §6) e <code>db</code> vem do <code>unbroadcast</code> do <code>+</code> (Etapa 3 §4), já testados e corretos.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 260" width="480">
+        <rect x="20" y="40" width="44" height="32" class="cell"></rect><text x="42" y="56" class="cell-text">x</text>
+        <rect x="74" y="40" width="44" height="32" class="cell"></rect><text x="96" y="56" class="cell-text">W</text>
+        <rect x="190" y="40" width="44" height="32" class="cell"></rect><text x="212" y="56" class="cell-text">t</text>
+        <rect x="250" y="40" width="44" height="32" class="cell"></rect><text x="272" y="56" class="cell-text">b</text>
+        <rect x="360" y="40" width="50" height="32" class="cell hot2"></rect><text x="385" y="56" class="cell-text">y</text>
+
+        <path d="M64,56 Q100,56 100,56 L190,56" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M118,56 Q150,56 150,80 Q150,90 190,68" class="arrow" marker-end="url(#arrowhead)" fill="none"></path>
+        <text x="150" y="30" class="lbl" text-anchor="middle">matmul(x, W)</text>
+
+        <path d="M234,56 L360,56" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M272,72 L272,90 Q272,95 300,72" class="arrow" marker-end="url(#arrowhead)" fill="none"></path>
+        <text x="320" y="30" class="lbl" text-anchor="middle">t + b (broadcast)</text>
+
+        <path d="M385,72 L385,105" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <rect x="360" y="108" width="50" height="30" class="cell hot"></rect><text x="385" y="123" class="cell-text hot">dy</text>
+        <text x="470" y="105" class="lbl hot" text-anchor="end">gradiente</text>
+        <text x="470" y="118" class="lbl hot" text-anchor="end">vindo de cima</text>
+
+        <path d="M370,138 Q260,170 90,188" class="arrow hot" marker-end="url(#arrowhead-hot)" fill="none"></path>
+        <path d="M385,138 L385,188" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M400,138 Q420,170 420,188" class="arrow hot" marker-end="url(#arrowhead-hot)" fill="none"></path>
+
+        <rect x="10" y="190" width="140" height="44" class="cell hot"></rect>
+        <text x="80" y="206" class="cell-text hot">dx</text><text x="80" y="222" class="cell-text soft" style="font-size:10.5px">= dy @ Wᵀ</text>
+
+        <rect x="170" y="190" width="140" height="44" class="cell hot"></rect>
+        <text x="240" y="206" class="cell-text hot">dW</text><text x="240" y="222" class="cell-text soft" style="font-size:10.5px">= xᵀ @ dy</text>
+
+        <rect x="340" y="190" width="130" height="44" class="cell hot"></rect>
+        <text x="405" y="206" class="cell-text hot">db</text><text x="405" y="222" class="cell-text soft" style="font-size:10.5px">= dy.sum(dim=0)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 2</span> Um único <code>dy</code> chega de cima; as três fórmulas de baixo são as mesmas de <code>matmul</code>/<code>add</code> já provadas na Etapa 3 — só reaplicadas com <code>A=x, B=W</code>. Nenhuma matemática nova nasce nesta etapa.</div>
+  </div>
+
+  <h2><span class="num">§3</span> Zero-init: por que os neurônios ficam gêmeos para sempre</h2>
+  <p>
+    <code>inputDim=2</code>, <code>outputDim=2</code>, <code>W</code> e <code>b</code> zerados, <code>x=[1,2]</code>,
+    loss simétrica nas duas saídas. Cada coluna de <code>W</code> percorre a mesma cadeia de valores que a outra —
+    o "=" entre as duas linhas nunca se quebra.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 210" width="480">
+        <text x="80" y="16" class="lbl strong" text-anchor="middle">W[:,j] (peso)</text>
+        <text x="185" y="16" class="lbl strong" text-anchor="middle">y[j]</text>
+        <text x="270" y="16" class="lbl strong" text-anchor="middle">dy[j]</text>
+        <text x="390" y="16" class="lbl strong" text-anchor="middle">dW[:,j] (update)</text>
+
+        <text x="4" y="62" class="lbl soft">n0</text>
+        <rect x="20" y="44" width="110" height="30" class="cell"></rect><text x="75" y="59" class="cell-text">[0, 0]</text>
+        <rect x="160" y="44" width="50" height="30" class="cell"></rect><text x="185" y="59" class="cell-text">0</text>
+        <rect x="245" y="44" width="50" height="30" class="cell"></rect><text x="270" y="59" class="cell-text">-2</text>
+        <rect x="330" y="44" width="120" height="30" class="cell"></rect><text x="390" y="59" class="cell-text">[-2, -4]</text>
+
+        <text x="4" y="132" class="lbl soft">n1</text>
+        <rect x="20" y="114" width="110" height="30" class="cell"></rect><text x="75" y="129" class="cell-text">[0, 0]</text>
+        <rect x="160" y="114" width="50" height="30" class="cell"></rect><text x="185" y="129" class="cell-text">0</text>
+        <rect x="245" y="114" width="50" height="30" class="cell"></rect><text x="270" y="129" class="cell-text">-2</text>
+        <rect x="330" y="114" width="120" height="30" class="cell"></rect><text x="390" y="129" class="cell-text">[-2, -4]</text>
+
+        <text x="75" y="97" class="lbl hot" text-anchor="middle">=</text>
+        <text x="185" y="97" class="lbl hot" text-anchor="middle">=</text>
+        <text x="270" y="97" class="lbl hot" text-anchor="middle">=</text>
+        <text x="390" y="97" class="lbl hot" text-anchor="middle">=</text>
+
+        <path d="M130,59 L160,59" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M210,59 L245,59" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M295,59 L330,59" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M130,129 L160,129" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M210,129 L245,129" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M295,129 L330,129" class="arrow" marker-end="url(#arrowhead)"></path>
+
+        <path d="M450,80 Q470,95 450,150 Q300,190 75,150 Q10,140 20,90" class="arrow hot" marker-end="url(#arrowhead-hot)" fill="none"></path>
+        <text x="240" y="185" class="lbl hot" text-anchor="middle">W ← W - lr·dW — as colunas continuam idênticas, sempre</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 3</span> Pesos iguais ⇒ mesma saída ⇒ mesmo gradiente recebido ⇒ mesma atualização — o ciclo nunca introduz uma diferença entre os dois neurônios. Inicialização aleatória quebra o "=" logo na primeira coluna.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 8 · camada linear · guia visual</footer>
+</div>

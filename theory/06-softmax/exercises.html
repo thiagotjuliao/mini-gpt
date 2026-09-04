@@ -1,0 +1,342 @@
+<title>Exercícios — Etapa 6: Softmax — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Softmax</h1>
+    <div class="meta">mini-gpt<br>normalização</div>
+    <div class="sub">Etapa 6 — Softmax e Log-Softmax · 12 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="06-softmax.md">06-softmax.md</a> e <a href="softmax.html">softmax.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que subtrair <code>max(x)</code> de todo elemento antes de exponenciar não muda o resultado do softmax?</p>
+    <div class="options">
+      <button class="option" data-key="a">muda sim, ligeiramente — é uma aproximação aceitável</button>
+      <button class="option" data-key="b">porque <code>max(x)</code> é sempre zero em tensores bem formados</button>
+      <button class="option" data-key="c">o fator <code>e⁻ᵐ</code> introduzido aparece multiplicando todo termo do numerador e do denominador, cancelando exatamente na divisão — é matematicamente idêntico, só numericamente mais estável</button>
+      <button class="option" data-key="d">porque softmax ignora a magnitude absoluta dos valores, só a ordem relativa</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> <code>e^(xᵢ-m) = eˣⁱ·e⁻ᵐ</code>. Como <code>e⁻ᵐ</code> é o mesmo fator em todo termo (numerador e cada termo do denominador), ele se cancela — a igualdade é exata, não uma aproximação.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual problema numérico a versão "subtrair o máximo" evita?</p>
+    <div class="options">
+      <button class="option" data-key="a">divisão por zero quando todos os elementos são iguais</button>
+      <button class="option" data-key="b"><code>eˣ</code> estourando pra <code>Infinity</code> quando algum elemento de <code>x</code> é grande</button>
+      <button class="option" data-key="c">a soma no denominador dar um número negativo</button>
+      <button class="option" data-key="d">nenhum — é só uma otimização de performance, sem motivo numérico</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Depois de subtrair o máximo, o maior expoente é sempre <code>0</code> (<code>e⁰=1</code>) — o pior caso é um expoente bem negativo, que só tende a zero, nunca estoura.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que o Jacobiano do softmax é uma matriz densa <code>N×N</code>, ao contrário de todas as operações das Etapas 3 e 5?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque softmax é implementada com laços aninhados</button>
+      <button class="option" data-key="b">na verdade não é — é só uma ilusão da notação, o Jacobiano é diagonal igual às outras operações</button>
+      <button class="option" data-key="c">porque softmax tem mais parâmetros treináveis que as outras ativações</button>
+      <button class="option" data-key="d">cada <code>sᵢ</code> depende de <strong>todos</strong> os <code>xⱼ</code>, não só do <code>xᵢ</code> correspondente — toda entrada participa da soma do denominador compartilhado por todas as saídas</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Diferente de ReLU/exp/etc. (onde <code>saída[i]</code> só depende de <code>entrada[i]</code>), em softmax toda entrada afeta a normalização de toda saída — daí a matriz completa <code>∂sᵢ/∂xⱼ</code> pra todo par <code>(i,j)</code>.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Na fórmula <code>∂sᵢ/∂xⱼ = sᵢ·(δᵢⱼ - sⱼ)</code>, o que representa <code>δᵢⱼ</code> (delta de Kronecker)?</p>
+    <div class="options">
+      <button class="option" data-key="a">um jeito compacto de escrever "1 se i=j, 0 caso contrário", unificando os dois casos (diagonal e fora da diagonal) numa única fórmula</button>
+      <button class="option" data-key="b">a derivada de segunda ordem do softmax</button>
+      <button class="option" data-key="c">o índice do maior elemento de <code>x</code></button>
+      <button class="option" data-key="d">um erro de notação — a fórmula correta não deveria ter esse termo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Quando <code>i=j</code>, <code>δᵢⱼ=1</code> e a fórmula vira <code>sᵢ(1-sᵢ)</code> (caso diagonal); quando <code>i≠j</code>, <code>δᵢⱼ=0</code> e sobra <code>-sᵢsⱼ</code> (caso fora da diagonal) — os dois casos derivados separadamente no <code>.md</code> §3, combinados numa fórmula só.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que cada linha do Jacobiano do softmax soma exatamente zero?</p>
+    <div class="options">
+      <button class="option" data-key="a">coincidência numérica sem explicação matemática mais profunda</button>
+      <button class="option" data-key="b">porque softmax sempre produz valores entre 0 e 1</button>
+      <button class="option" data-key="c">é consequência direta de <code>softmax(x+c) = softmax(x)</code> (§1) — se a soma de uma linha não fosse zero, deslocar <code>x</code> por uma constante mudaria aquele <code>sᵢ</code>, contradizendo a invariância por deslocamento</button>
+      <button class="option" data-key="d">só acontece nesse exemplo específico do <code>.md</code>, não é geral</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É uma conexão direta entre duas propriedades do <code>.md</code>: a invariância por deslocamento (§1) implica que a soma de cada linha do Jacobiano é zero (§3) — não são fatos independentes.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que vale a pena simplificar <code>dx = J·dOut</code> (multiplicação pelo Jacobiano completo) pra <code>dx = s·(dOut - (dOut·s).sum())</code>, em vez de só montar a matriz <code>N×N</code> e multiplicar?</p>
+    <div class="options">
+      <button class="option" data-key="a">a matriz completa dá um resultado diferente (mais impreciso) — a fórmula simplificada é a única correta</button>
+      <button class="option" data-key="b">custo computacional: montar e multiplicar pela matriz <code>N×N</code> é <code>O(N²)</code>; a fórmula simplificada é <code>O(N)</code>, e os dois métodos dão exatamente o mesmo resultado (conferido no §4 do <code>.md</code>)</button>
+      <button class="option" data-key="c">só por legibilidade do código — não há diferença de performance real</button>
+      <button class="option" data-key="d">a matriz completa não pode ser calculada em Scala</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O <code>.md</code> verifica os dois caminhos batendo no mesmo valor (<code>dx₀≈-0.01418</code> pelos dois métodos) — a simplificação é uma otimização algébrica exata, não uma aproximação.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que <code>log_softmax(x)</code> é implementado como sua própria função (<code>x - log(Σe^x)</code>), em vez de simplesmente escrever <code>softmax(x).log</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>.log</code> (Etapa 3) não aceita tensores multidimensionais</button>
+      <button class="option" data-key="b">não há motivo real — as duas formas são equivalentes em todos os aspectos, incluindo precisão numérica</button>
+      <button class="option" data-key="c">porque softmax e log-softmax têm domínios matemáticos diferentes</button>
+      <button class="option" data-key="d">se algum <code>sᵢ</code> for um número extremamente pequeno, calcular <code>log</code> dele depois de já ter perdido precisão na divisão é menos preciso do que a fórmula direta (log-sum-exp), que nunca forma uma divisão por um número minúsculo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> É o mesmo espírito da estabilidade numérica do forward do softmax (§1) — computar em uma única fórmula "log-sum-exp" evita o encadeamento de duas operações (divisão seguida de log) que cada uma perde precisão separadamente.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O backward de <code>log_softmax</code> (<code>dx = dOut - s·dOut.sum()</code>) é mais simples que o de <code>softmax</code> (<code>dx = s·(dOut - (dOut·s).sum())</code>). Qual é a diferença estrutural exata entre os dois?</p>
+    <div class="options">
+      <button class="option" data-key="a">o de softmax usa o produto interno <code>(dOut·s).sum()</code> (pondera <code>dOut</code> por <code>s</code> antes de somar) e multiplica o resultado inteiro por <code>s</code> no final; o de log-softmax usa só <code>dOut.sum()</code> (soma direta, sem ponderar) e não multiplica o resultado final por nada além do termo <code>s·(...)</code> já subtraído</button>
+      <button class="option" data-key="b">são matematicamente idênticos, só escritos de forma diferente</button>
+      <button class="option" data-key="c">log-softmax não tem backward — só forward</button>
+      <button class="option" data-key="d">softmax usa <code>+</code> onde log-softmax usa <code>-</code>, é a única diferença</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Vem diretamente das duas derivações do <code>.md</code> (§4 e §5): o Jacobiano de softmax (<code>sᵢ(δᵢⱼ-sⱼ)</code>) tem um fator <code>sᵢ</code> multiplicando tudo, o de log-softmax (<code>δᵢⱼ-sⱼ</code>) não — essa diferença estrutural se propaga pras fórmulas simplificadas.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext"><code>x = [1.0, 2.0, 3.0]</code>, <code>s ≈ [0.09003, 0.24473, 0.66524]</code>, <code>dOut = [0.1, 0.2, 0.3]</code>. Qual é <code>(dOut·s).sum()</code>, usado no backward do softmax?</p>
+    <div class="options">
+      <button class="option" data-key="a">0.6 (soma de <code>dOut</code>)</button>
+      <button class="option" data-key="b">1.0 (soma de <code>s</code>)</button>
+      <button class="option" data-key="c">≈0.25752 — <code>0.1·0.09003 + 0.2·0.24473 + 0.3·0.66524</code></button>
+      <button class="option" data-key="d">≈0.99999 (produto de <code>dOut</code> e <code>s</code> somados diretamente sem multiplicar)</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É o produto interno posição-a-posição entre <code>dOut</code> e <code>s</code>, depois somado — exatamente o cálculo do §4 do <code>.md</code>, usado tanto na verificação via Jacobiano completo quanto na fórmula simplificada.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Continuando o exemplo anterior, qual é <code>dx₂</code> (posição de maior <code>s</code>), pela fórmula simplificada do softmax?</p>
+    <div class="options">
+      <button class="option" data-key="a">≈-0.01418 (esse é <code>dx₀</code>, não <code>dx₂</code>)</button>
+      <button class="option" data-key="b">≈0.02826 — <code>s₂·(dOut₂ - 0.25752) = 0.66524·(0.3-0.25752) ≈ 0.66524·0.04248</code></button>
+      <button class="option" data-key="c">0.3 (igual a <code>dOut₂</code>, sem nenhuma correção)</button>
+      <button class="option" data-key="d">≈0.66524 (igual a <code>s₂</code>, sem nenhuma correção)</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Mesmo cálculo do §4 do <code>.md</code>: <code>dOut₂ - (dOut·s).sum() = 0.3 - 0.25752 ≈ 0.04248</code>, multiplicado por <code>s₂≈0.66524</code>.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Ao rodar <code>Gradcheck.run</code> em <code>softmax</code>, o roadmap recomenda testar "logits de magnitudes bem diferentes entre si" (ex.: <code>[0.01, 50.0, -30.0]</code>). Por que isso é um teste especialmente importante pra essa operação?</p>
+    <div class="options">
+      <button class="option" data-key="a">não é importante — qualquer conjunto de valores testa igualmente bem</button>
+      <button class="option" data-key="b">porque softmax só funciona com valores positivos</button>
+      <button class="option" data-key="c">porque o gradiente numérico do <code>gradCheck</code> é mais rápido de calcular com valores extremos</button>
+      <button class="option" data-key="d">valores muito diferentes entre si empurram alguns <code>sᵢ</code> pra bem perto de <code>0</code> ou de <code>1</code> — exatamente a região onde erros de estabilidade numérica (overflow no <code>exp</code>, ou perda de precisão na subtração do máximo) mais provavelmente apareceriam, se a implementação não tivesse feito o truque da seção §1 corretamente</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Testar só com valores parecidos (ex.: <code>[1,2,3]</code>) não expõe problemas de estabilidade numérica, porque nenhum <code>sᵢ</code> fica extremo. Logits bem espalhados forçam exatamente o cenário que motivou subtrair o máximo em primeiro lugar.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Softmax normaliza ao longo de uma dimensão (<code>dim</code>), reaproveitando a mesma infraestrutura de <code>sum(a, dim)</code>/<code>broadcastTo</code> da Etapa 3. O que exatamente é reaproveitado?</p>
+    <div class="options">
+      <button class="option" data-key="a">o padrão de calcular uma redução (<code>max</code> e a soma do denominador) com <code>keepDim=true</code> ao longo de <code>dim</code>, e depois usar broadcasting pra subtrair/dividir esse resultado reduzido de volta no tensor original, mesma técnica já usada por <code>sum(a,dim)</code>/<code>mean(a,dim)</code></button>
+      <button class="option" data-key="b">nada é reaproveitado — softmax precisa de uma implementação totalmente nova, sem relação com o que já existe</button>
+      <button class="option" data-key="c">só o `Gradient`, os outros tipos (`Shape`/`Strides`) não são usados por softmax</button>
+      <button class="option" data-key="d">o backward de `matmul`, já que softmax também produz uma matriz densa</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> `keepDim=true` (Etapa 3) existe justamente pra permitir esse padrão: reduzir mantendo a dimensão como tamanho `1`, pra que o broadcasting (também Etapa 3) consiga expandir de volta e operar elemento-a-elemento com o tensor original, sem precisar de laços manuais por índice.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 6 · softmax e log-softmax · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. O Jacobiano do softmax e a simplificação do backward estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 06-softmax.md e softmax.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

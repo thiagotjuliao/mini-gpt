@@ -1,0 +1,263 @@
+<title>Strides & Memória — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .callout { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 10px 16px; margin: 1.4em 0; font-size: 0.95rem; }
+  .callout .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.35em; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 1.2em 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1.5px solid var(--line-strong); }
+  .cell-rect { fill: var(--plate-bg); stroke: var(--line-strong); stroke-width: 1.5; }
+  .cell-rect.ghost { fill: none; stroke: var(--ghost); stroke-dasharray: 4 3; }
+  .cell-rect.accent { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell-rect.warm { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 13px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .idx-text { font-family: "JetBrains Mono", monospace; font-size: 10px; fill: var(--ink-soft); text-anchor: middle; }
+  .idx-text.left { text-anchor: start; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .arrow.hot { stroke: var(--accent2); stroke-width: 1.8; }
+  .arrow.sum { stroke: var(--accent); stroke-width: 1.8; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+    <marker id="arrowhead-sum" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Strides &amp; Memória</h1>
+    <div class="meta">mini-gpt<br>núcleo de tensores</div>
+    <div class="sub">Folha 01 · Etapa 1 — Tensor · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> Achatando uma matriz numa fita 1D</h2>
+  <p>
+    A memória do computador é sempre uma fita <strong>1D</strong>. Um tensor de shape <code>(3,4)</code> (3 linhas,
+    4 colunas) precisa ser "achatado" em 12 posições sequenciais. Usamos <strong>row-major</strong>: percorre a
+    última dimensão primeiro, então uma linha inteira fica contígua na memória.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 560 190" width="560">
+        <text x="10" y="18" class="lbl strong">shape lógico (3, 4)</text>
+        <!-- 3x4 grid -->
+        <g>
+          <!-- row 0 -->
+          <rect x="10" y="30" width="60" height="34" class="cell-rect accent"></rect><text x="40" y="50" class="cell-text" style="font-size:11px">(0,0)</text>
+          <rect x="70" y="30" width="60" height="34" class="cell-rect accent"></rect><text x="100" y="50" class="cell-text" style="font-size:11px">(0,1)</text>
+          <rect x="130" y="30" width="60" height="34" class="cell-rect accent"></rect><text x="160" y="50" class="cell-text" style="font-size:11px">(0,2)</text>
+          <rect x="190" y="30" width="60" height="34" class="cell-rect accent"></rect><text x="220" y="50" class="cell-text" style="font-size:11px">(0,3)</text>
+          <!-- row 1 -->
+          <rect x="10" y="64" width="60" height="34" class="cell-rect"></rect><text x="40" y="84" class="cell-text" style="font-size:11px">(1,0)</text>
+          <rect x="70" y="64" width="60" height="34" class="cell-rect"></rect><text x="100" y="84" class="cell-text" style="font-size:11px">(1,1)</text>
+          <rect x="130" y="64" width="60" height="34" class="cell-rect"></rect><text x="160" y="84" class="cell-text" style="font-size:11px">(1,2)</text>
+          <rect x="190" y="64" width="60" height="34" class="cell-rect"></rect><text x="220" y="84" class="cell-text" style="font-size:11px">(1,3)</text>
+          <!-- row 2 -->
+          <rect x="10" y="98" width="60" height="34" class="cell-rect"></rect><text x="40" y="118" class="cell-text" style="font-size:11px">(2,0)</text>
+          <rect x="70" y="98" width="60" height="34" class="cell-rect"></rect><text x="100" y="118" class="cell-text" style="font-size:11px">(2,1)</text>
+          <rect x="130" y="98" width="60" height="34" class="cell-rect"></rect><text x="160" y="118" class="cell-text" style="font-size:11px">(2,2)</text>
+          <rect x="190" y="98" width="60" height="34" class="cell-rect"></rect><text x="220" y="118" class="cell-text" style="font-size:11px">(2,3)</text>
+        </g>
+
+        <path d="M310,47 L480,47" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <text x="395" y="35" class="lbl" fill="var(--accent2)">achatar (row-major)</text>
+
+        <text x="10" y="160" class="lbl strong">data físico (fita 1D)</text>
+        <g>
+          <rect x="10" y="168" width="42" height="30" class="cell-rect accent"></rect><text x="31" y="186" class="idx-text">0</text>
+          <rect x="52" y="168" width="42" height="30" class="cell-rect accent"></rect><text x="73" y="186" class="idx-text">1</text>
+          <rect x="94" y="168" width="42" height="30" class="cell-rect accent"></rect><text x="115" y="186" class="idx-text">2</text>
+          <rect x="136" y="168" width="42" height="30" class="cell-rect accent"></rect><text x="157" y="186" class="idx-text">3</text>
+          <rect x="178" y="168" width="42" height="30" class="cell-rect"></rect><text x="199" y="186" class="idx-text">4</text>
+          <rect x="220" y="168" width="42" height="30" class="cell-rect"></rect><text x="241" y="186" class="idx-text">5</text>
+          <rect x="262" y="168" width="42" height="30" class="cell-rect"></rect><text x="283" y="186" class="idx-text">6</text>
+          <rect x="304" y="168" width="42" height="30" class="cell-rect"></rect><text x="325" y="186" class="idx-text">7</text>
+          <rect x="346" y="168" width="42" height="30" class="cell-rect"></rect><text x="367" y="186" class="idx-text">8</text>
+          <rect x="388" y="168" width="42" height="30" class="cell-rect"></rect><text x="409" y="186" class="idx-text">9</text>
+          <rect x="430" y="168" width="42" height="30" class="cell-rect"></rect><text x="451" y="186" class="idx-text">10</text>
+          <rect x="472" y="168" width="42" height="30" class="cell-rect"></rect><text x="493" y="186" class="idx-text">11</text>
+        </g>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 1</span>A primeira linha lógica <code>(0,0)…(0,3)</code> (destacada) vira exatamente as posições físicas <code>0…3</code> — row-major mantém cada linha contígua na memória.</div>
+  </div>
+
+  <h2><span class="num">§2</span> Stride: "quanto pular por dimensão"</h2>
+  <p>
+    <strong>Stride</strong> de uma dimensão é quantas posições no array linear você anda quando incrementa
+    <em>só aquela</em> dimensão em 1. Fórmula geral, row-major: o stride de cada dimensão é o produto de todas
+    as dimensões <strong>à direita</strong> dela; a última dimensão sempre tem stride <code>1</code>.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 150" width="460">
+        <text x="10" y="20" class="lbl strong">shape (2, 3, 4)  →  strides (12, 4, 1)</text>
+
+        <rect x="10" y="35" width="70" height="40" class="cell-rect warm"></rect>
+        <text x="45" y="58" class="cell-text">2</text>
+        <text x="45" y="90" class="lbl">stride=12</text>
+        <text x="10" y="110" class="idx-text left">3·4 (tudo à direita)</text>
+
+        <rect x="120" y="35" width="70" height="40" class="cell-rect accent"></rect>
+        <text x="155" y="58" class="cell-text">3</text>
+        <text x="155" y="90" class="lbl">stride=4</text>
+        <text x="120" y="110" class="idx-text left">4 (só a última)</text>
+
+        <rect x="230" y="35" width="70" height="40" class="cell-rect"></rect>
+        <text x="265" y="58" class="cell-text">4</text>
+        <text x="265" y="90" class="lbl">stride=1</text>
+        <text x="230" y="110" class="idx-text left">nada à direita</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 2</span>Cada stride é o produto de tudo que fica <em>depois</em> dela no shape — a última dimensão sempre anda de 1 em 1 na memória.</div>
+  </div>
+
+  <p>Índice físico de um elemento lógico <code>(i,j,k)</code>: soma de cada coordenada vezes sua stride.</p>
+  <pre>idx(1, 2, 3) = 1·stride[0] + 2·stride[1] + 3·stride[2]
+             = 1·12       + 2·4         + 3·1
+             = 12 + 8 + 3 = 23   ← último elemento (tensor tem 24, índices 0..23)</pre>
+
+  <h2><span class="num">§3</span> Por que <code class="code-inline">reshape</code>/<code class="code-inline">transpose</code> são grátis</h2>
+  <p>
+    O array físico já contém todos os números — <code>reshape</code> e <code>transpose</code> só trocam os
+    <em>metadados</em> (<code>shape</code>/<code>strides</code>), nunca copiam dado. É por isso que <code>reshape</code>
+    exige que o produto do shape (o <code>size</code>) seja igual antes e depois: é a mesma fita, só reinterpretada.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 560 230" width="560">
+        <text x="10" y="20" class="lbl strong">original: shape (3,4)  strides (4,1)</text>
+        <g>
+          <rect x="10" y="30" width="50" height="30" class="cell-rect"></rect><text x="35" y="47" class="cell-text" style="font-size:11px">0,0</text>
+          <rect x="60" y="30" width="50" height="30" class="cell-rect"></rect><text x="85" y="47" class="cell-text" style="font-size:11px">0,1</text>
+          <rect x="110" y="30" width="50" height="30" class="cell-rect"></rect><text x="135" y="47" class="cell-text" style="font-size:11px">0,2</text>
+          <rect x="160" y="30" width="50" height="30" class="cell-rect accent"></rect><text x="185" y="47" class="cell-text" style="font-size:11px">0,3</text>
+          <rect x="10" y="60" width="50" height="30" class="cell-rect"></rect><text x="35" y="77" class="cell-text" style="font-size:11px">1,0</text>
+          <rect x="60" y="60" width="50" height="30" class="cell-rect"></rect><text x="85" y="77" class="cell-text" style="font-size:11px">1,1</text>
+          <rect x="110" y="60" width="50" height="30" class="cell-rect"></rect><text x="135" y="77" class="cell-text" style="font-size:11px">1,2</text>
+          <rect x="160" y="60" width="50" height="30" class="cell-rect accent"></rect><text x="185" y="77" class="cell-text" style="font-size:11px">1,3</text>
+          <rect x="10" y="90" width="50" height="30" class="cell-rect"></rect><text x="35" y="107" class="cell-text" style="font-size:11px">2,0</text>
+          <rect x="60" y="90" width="50" height="30" class="cell-rect"></rect><text x="85" y="107" class="cell-text" style="font-size:11px">2,1</text>
+          <rect x="110" y="90" width="50" height="30" class="cell-rect"></rect><text x="135" y="107" class="cell-text" style="font-size:11px">2,2</text>
+          <rect x="160" y="90" width="50" height="30" class="cell-rect accent"></rect><text x="185" y="107" class="cell-text" style="font-size:11px">2,3</text>
+        </g>
+
+        <path d="M240,60 L290,60" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <text x="215" y="20" class="lbl" fill="var(--accent2)">.transpose()</text>
+        <text x="220" y="45" class="lbl">mesmo array,</text>
+        <text x="220" y="58" class="lbl">só shape/strides</text>
+        <text x="220" y="71" class="lbl">trocam de ordem</text>
+
+        <text x="310" y="20" class="lbl strong">transposta: shape (4,3)  strides (1,4)</text>
+        <g>
+          <rect x="310" y="30" width="50" height="30" class="cell-rect"></rect><text x="335" y="47" class="cell-text" style="font-size:11px">0,0</text>
+          <rect x="360" y="30" width="50" height="30" class="cell-rect"></rect><text x="385" y="47" class="cell-text" style="font-size:11px">0,1</text>
+          <rect x="410" y="30" width="50" height="30" class="cell-rect"></rect><text x="435" y="47" class="cell-text" style="font-size:11px">0,2</text>
+          <rect x="310" y="60" width="50" height="30" class="cell-rect"></rect><text x="335" y="77" class="cell-text" style="font-size:11px">1,0</text>
+          <rect x="360" y="60" width="50" height="30" class="cell-rect"></rect><text x="385" y="77" class="cell-text" style="font-size:11px">1,1</text>
+          <rect x="410" y="60" width="50" height="30" class="cell-rect"></rect><text x="435" y="77" class="cell-text" style="font-size:11px">1,2</text>
+          <rect x="310" y="90" width="50" height="30" class="cell-rect"></rect><text x="335" y="107" class="cell-text" style="font-size:11px">2,0</text>
+          <rect x="360" y="90" width="50" height="30" class="cell-rect"></rect><text x="385" y="107" class="cell-text" style="font-size:11px">2,1</text>
+          <rect x="410" y="90" width="50" height="30" class="cell-rect"></rect><text x="435" y="107" class="cell-text" style="font-size:11px">2,2</text>
+          <rect x="310" y="120" width="50" height="30" class="cell-rect accent"></rect><text x="335" y="137" class="cell-text" style="font-size:11px">3,0</text>
+          <rect x="360" y="120" width="50" height="30" class="cell-rect accent"></rect><text x="385" y="137" class="cell-text" style="font-size:11px">3,1</text>
+          <rect x="410" y="120" width="50" height="30" class="cell-rect accent"></rect><text x="435" y="137" class="cell-text" style="font-size:11px">3,2</text>
+        </g>
+
+        <path d="M185,45 Q260,10 335,32" class="arrow sum"></path>
+        <path d="M185,75 Q260,105 335,122" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <text x="260" y="155" class="lbl" text-anchor="middle">mesmos 3 números (coluna → linha), só a ordem de leitura muda</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 3</span>Transpor <code>(3,4)→(4,3)</code> não move nada na memória: só troca <code>shape</code> e <code>strides</code> de lugar. A transposta deixa de ser contígua — percorrer sua última dimensão agora pula de <code>4</code> em <code>4</code> na memória física, não de <code>1</code> em <code>1</code>. É pra isso que existe <code>.contiguous</code>: força uma cópia real na nova ordem, quando alguma operação seguinte precisar de stride <code>1</code> na última dimensão.</div>
+  </div>
+
+  <div class="callout">
+    <span class="tag">Por que isso importa mais adiante</span>
+    Esse mesmo mecanismo — <code>shape</code>/<code>strides</code> descrevendo uma "visão" diferente do mesmo
+    <code>data</code> — é reaproveitado na Etapa 3 pro <strong>broadcasting</strong> (ver
+    <code>03-elementary-operations/broadcasting.html</code>), só que lá a stride pode ser <code>0</code> em vez de
+    só permutada.
+  </div>
+
+  <h2><span class="num">§4</span> Referência rápida</h2>
+  <table>
+    <tr><th>Conceito</th><th>Fórmula / regra</th><th>Onde mora</th></tr>
+    <tr><td>Stride de uma dimensão</td><td><code>stride[k] = produto dos shapes à direita de k</code>; última dimensão sempre <code>1</code></td><td><code>Shape.canonicalStrides</code></td></tr>
+    <tr><td>Índice físico ↔ multi-índice</td><td><code>idx = Σ coord[k]·stride[k]</code></td><td><code>Shape.index</code> / <code>Shape.unravelIndex</code></td></tr>
+    <tr><td>reshape</td><td>size (produto do shape) deve ser igual antes/depois; strides recalculadas do zero</td><td><code>Tensor.reshape</code></td></tr>
+    <tr><td>transpose</td><td>troca posição de duas dimensões em <code>shape</code> e <code>strides</code>, sem tocar <code>data</code></td><td><code>Tensor.transpose</code></td></tr>
+    <tr><td>contiguous</td><td>copia os dados pra ordem row-major canônica da view atual</td><td><code>Tensor.contiguous</code></td></tr>
+  </table>
+
+  <footer>mini-gpt — etapa 1 · tensor</footer>
+</div>

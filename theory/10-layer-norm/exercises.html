@@ -1,0 +1,342 @@
+<title>Exercícios — Etapa 10: LayerNorm — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — LayerNorm</h1>
+    <div class="meta">mini-gpt<br>escala estável</div>
+    <div class="sub">Etapa 10 — Layer Normalization · 12 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="10-layer-norm.md">10-layer-norm.md</a> e <a href="layer-norm.html">layer-norm.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Num tensor <code>[B, T, H]</code>, sobre quais valores a média e a variância de uma passada do LayerNorm são calculadas?</p>
+    <div class="options">
+      <button class="option" data-key="a">sobre todos os <code>B·T·H</code> números do tensor de uma vez</button>
+      <button class="option" data-key="b">sobre a dimensão do lote <code>B</code>, uma estatística por posição</button>
+      <button class="option" data-key="c">sobre as <code>H</code> posições de cada vetor, independentemente — <code>B·T</code> contas separadas</button>
+      <button class="option" data-key="d">sobre a dimensão da sequência <code>T</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Cada vetor de tamanho <code>H</code> usa só as próprias posições. A opção B descreve BatchNorm, que é o contraste da §7 do <code>.md</code>.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">A variância do LayerNorm divide a soma dos desvios ao quadrado por qual número?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>H - 1</code>, como na variância amostral da estatística</button>
+      <button class="option" data-key="b"><code>H</code> — as <code>H</code> posições são tudo que existe, não uma amostra de algo maior</button>
+      <button class="option" data-key="c"><code>B · T</code></button>
+      <button class="option" data-key="d">pela soma dos próprios valores</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O <code>H - 1</code> corrige o viés de estimar a variância de uma população a partir de uma amostra. Aqui não se estima nada (§2 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Com quais valores <code>γ</code> e <code>β</code> nascem, e por quê?</p>
+    <div class="options">
+      <button class="option" data-key="a">ambos <code>N(0, 0.02²)</code>, como as tabelas de embedding</button>
+      <button class="option" data-key="b"><code>γ = 1</code> e <code>β = 0</code> — assim <code>y = x̂</code> e a camada começa como a normalização pura</button>
+      <button class="option" data-key="c">Kaiming, como a matriz de pesos do <code>Linear</code></button>
+      <button class="option" data-key="d">ambos zero, para o modelo começar neutro</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Kaiming compensa fan-in de uma multiplicação de matriz, que não existe aqui. Com <code>γ = 0</code> a camada zeraria toda saída (§4 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Os vetores <code>[2, 3, 6, 9]</code>, <code>[200, 300, 600, 900]</code> e <code>[1002, 1003, 1006, 1009]</code> produzem o mesmo <code>x̂</code>. O que isso mostra?</p>
+    <div class="options">
+      <button class="option" data-key="a">que a normalização descarta escala e deslocamento, preservando só o formato relativo do vetor</button>
+      <button class="option" data-key="b">que é coincidência dos números escolhidos</button>
+      <button class="option" data-key="c">que o <code>ε</code> está grande demais</button>
+      <button class="option" data-key="d">que a camada está com bug — vetores diferentes deveriam dar saídas diferentes</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> É a invariância que motiva a existência de <code>γ</code> e <code>β</code>: eles devolvem, sob controle do treino, o que foi descartado (§1 e §4 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que <code>ε</code> fica <em>dentro</em> da raiz, em <code>√(σ² + ε)</code>, e não somado depois dela?</p>
+    <div class="options">
+      <button class="option" data-key="a">é indiferente — as duas formas dão o mesmo resultado</button>
+      <button class="option" data-key="b">por convenção dos papers, sem razão matemática</button>
+      <button class="option" data-key="c">porque só dentro da raiz ele impede que o radicando seja zero; fora, <code>√σ²</code> ainda pode ser <code>0/0</code></button>
+      <button class="option" data-key="d">porque fora da raiz o resultado ficaria negativo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Com <code>x = [7,7,7,7]</code>, a variância é exatamente zero. Dentro da raiz, o denominador vira <code>√ε ≈ 0.003162</code>; fora, continuaria zero antes da soma (§3 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Qual é a diferença entre pre-LN (<code>x + Sub(LN(x))</code>) e post-LN (<code>LN(x + Sub(x))</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a">pre-LN usa <code>γ</code> e <code>β</code>; post-LN não usa</button>
+      <button class="option" data-key="b">nenhuma — são a mesma conta escrita de dois jeitos</button>
+      <button class="option" data-key="c">pre-LN normaliza sobre o lote; post-LN sobre a última dimensão</button>
+      <button class="option" data-key="d">em pre-LN o caminho direto atravessa o bloco intocado; em post-LN ele é reescalado a cada bloco</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Por isso o GPT-2 trocou o post-LN do transformer original por pre-LN, que é o que este projeto vai construir na Etapa 14 (§8 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Ao implementar por composição, o que acontece se a média for calculada com <code>keepDim = false</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada — o broadcasting resolve sozinho em qualquer caso</button>
+      <button class="option" data-key="b">a média sai errada, mas o formato final continua certo</button>
+      <button class="option" data-key="c">o compilador acusa erro de tipo</button>
+      <button class="option" data-key="d">a média de <code>[B,T,H]</code> sai <code>[B,T]</code>, e o broadcast passa a alinhar <code>T</code> contra <code>H</code> — quase sempre erro de formato, mas se <code>T == H</code> a conta roda silenciosamente errada</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Com <code>keepDim = true</code> a média sai <code>[B,T,1]</code>, e o <code>1</code> broadcasta sobre <code>H</code> exatamente como se quer (§6 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Em Scala, com <code>H: Int</code>, o que <code>1 / H</code> produz quando <code>H = 4</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>0</code> — divisão entre inteiros trunca, e a camada passa a devolver só <code>β</code> para qualquer entrada</button>
+      <button class="option" data-key="b"><code>0.25</code>, porque o Scala promove para <code>Double</code> automaticamente</button>
+      <button class="option" data-key="c">erro de compilação</button>
+      <button class="option" data-key="d"><code>NaN</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Este bug já aconteceu no projeto: na Etapa 8, <code>Math.sqrt(2 / inputDim)</code> truncava para <code>0</code> e a matriz de pesos nascia zerada. Escreva <code>1.0 / H</code> (§6 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Qual é o gradiente de <code>γ</code>, e por que ele envolve uma soma?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>dγ = Σ_linhas dy · x̂</code> — <code>γ</code> tem formato <code>[H]</code> e foi broadcastado sobre <code>B·T</code> linhas, então o gradiente é desbroadcastado somando de volta</button>
+      <button class="option" data-key="b"><code>dγ = Σ dy · x</code>, usando a entrada original</button>
+      <button class="option" data-key="c"><code>dγ = dy</code>, sem soma nenhuma</button>
+      <button class="option" data-key="d"><code>dγ = Σ_linhas dy</code>, que é o mesmo de <code>β</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> A opção D é o gradiente de <code>β</code>. Pela regra do produto, quem multiplica <code>γ</code> é <code>x̂</code>, então é ele que aparece em <code>dγ</code> — mesmo mecanismo do bias da Etapa 8 §3 (§4 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Com <code>dx̂ = [0.5, −0.5, 4.0, 4.5]</code> e <code>H = 4</code>, quanto vale <code>m₁</code>, e o que ele faz na fórmula de <code>dx</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>8.5</code> — é a soma, e ela é somada a cada posição</button>
+      <button class="option" data-key="b"><code>2.125</code> — é a média dos <code>dx̂</code>, subtraída de todas as posições para remover o empurrão que só deslocaria o vetor</button>
+      <button class="option" data-key="c"><code>0</code> — a média de um gradiente é sempre zero</button>
+      <button class="option" data-key="d"><code>2.125</code>, mas é multiplicada por <code>x̂</code> antes de entrar na conta</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> <code>(0.5 − 0.5 + 4.0 + 4.5)/4 = 2.125</code>. Quem multiplica <code>x̂ⱼ</code> é o outro termo, <code>m₂ = 1.962671</code>, que remove o empurrão de escala (§5 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Na Etapa 8, inicializar toda a matriz <code>W</code> com o mesmo valor era um bug de simetria. Por que <code>γ = 1</code> em todas as posições não sofre do mesmo problema?</p>
+    <div class="options">
+      <button class="option" data-key="a">sofre — <code>γ</code> também deveria ser aleatório</button>
+      <button class="option" data-key="b">porque <code>γ</code> é multiplicado, e <code>W</code> é somado</button>
+      <button class="option" data-key="c">porque <code>γᵢ</code> multiplica apenas a posição <code>i</code>, então cada um recebe um gradiente diferente já na primeira passada; em <code>W</code>, duas colunas viam exatamente a mesma entrada</button>
+      <button class="option" data-key="d">porque <code>1</code> é elemento neutro, e o problema da Etapa 8 só ocorre com o valor zero</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A simetria que trava o aprendizado é a de parâmetros que enxergam a mesma coisa, não a igualdade de valores iniciais (§4 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Com <code>γ = 1</code> e um <code>dy</code> igual em todas as posições, quanto vale <code>dx</code> — e o que isso revela?</p>
+    <div class="options">
+      <button class="option" data-key="a">zero em toda posição: com <code>dx̂</code> constante igual a <code>c</code>, temos <code>m₁ = c</code> e <code>m₂ = c·média(x̂) = 0</code>, sobrando <code>(c − c − 0)/s</code></button>
+      <button class="option" data-key="b"><code>dx = dy</code>, porque a normalização preserva gradientes uniformes</button>
+      <button class="option" data-key="c"><code>dx = dy/s</code>, apenas reescalado</button>
+      <button class="option" data-key="d">indefinido, porque a fórmula exige <code>dy</code> variado</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Um <code>dy</code> uniforme pede para empurrar o vetor inteiro na mesma direção — exatamente o que o forward ignora, então o backward devolve zero. É a mesma propriedade que aparece como <code>Σ dx = 0</code> na conferência da §5.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 10 · layer normalization · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A derivação do backward e o papel do ε estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 10-layer-norm.md e layer-norm.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

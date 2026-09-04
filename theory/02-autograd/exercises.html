@@ -1,0 +1,318 @@
+<title>Exercícios — Etapa 2: Autograd — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Autograd</h1>
+    <div class="meta">mini-gpt<br>motor de autodiferenciação</div>
+    <div class="sub">Etapa 2 — Autograd · 10 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="02-autograd.md">02-autograd.md</a> e <a href="computational-graph.html">computational-graph.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Se <code>y = f(x)</code> e <code>z = g(y)</code>, a regra da cadeia diz que <code>dz/dx</code> é igual a:</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>dz/dy + dy/dx</code></button>
+      <button class="option" data-key="b"><code>dz/dy · dy/dx</code></button>
+      <button class="option" data-key="c"><code>dy/dx</code> apenas</button>
+      <button class="option" data-key="d"><code>dz/dy</code> apenas</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A derivada flui de trás pra frente multiplicando as sensibilidades de cada etapa intermediária: o quanto <code>z</code> muda por <code>x</code> é (o quanto <code>z</code> muda por <code>y</code>) vezes (o quanto <code>y</code> muda por <code>x</code>). Isso generaliza pra cadeias arbitrariamente longas.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">No grafo de computação, o que exatamente <code>previous</code> (<code>_prev</code>) e <code>_backward</code> guardam num tensor de saída?</p>
+    <div class="options">
+      <button class="option" data-key="a">o valor final da perda e sua derivada</button>
+      <button class="option" data-key="b">apenas o shape e o dtype do tensor</button>
+      <button class="option" data-key="c"><code>previous</code>: os tensores de entrada da operação; <code>_backward</code>: a closure que propaga gradiente pra eles</button>
+      <button class="option" data-key="d">o histórico de todas as operações já feitas no programa inteiro</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Cada operação cria um tensor de saída que "lembra" de onde veio (<code>previous</code>) e sabe, via <code>_backward</code>, como usar a regra local daquela operação específica pra propagar gradiente pras entradas. Ligando essas referências entre tensores, formam o DAG.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que o gradiente é <strong>acumulado</strong> (<code>+=</code> / <code>accumulate</code>) em vez de <strong>sobrescrito</strong> (<code>=</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque um tensor usado em múltiplos caminhos recebe uma contribuição de cada um, e a regra da cadeia multivariável manda somá-las</button>
+      <button class="option" data-key="b">é só uma convenção de estilo, sobrescrever também funcionaria</button>
+      <button class="option" data-key="c">porque `Array[Double]` não suporta atribuição direta em Scala</button>
+      <button class="option" data-key="d">porque o gradiente é sempre a média das contribuições, não a soma</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Se um tensor é reusado (ex.: <code>a</code> aparece duas vezes no grafo), cada caminho contribui uma parcela do gradiente total. Sobrescrever perderia a contribuição anterior — um bug silencioso, já que o código roda sem erro, só produz números errados.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que <code>backward()</code> precisa visitar os nós numa ordem específica (topológica reversa), em vez de qualquer ordem?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque um nó só pode ser processado depois que todo gradiente que ele vai receber (de todos os seus consumidores) já chegou</button>
+      <button class="option" data-key="b">só por performance — qualquer ordem dá o resultado certo, topológica é só mais rápida</button>
+      <button class="option" data-key="c">porque Scala exige que sets sejam percorridos em ordem de inserção</button>
+      <button class="option" data-key="d">não precisa; a ordenação topológica é usada só no forward, não no backward</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Processar fora de ordem acumularia gradiente parcial num nó e propagaria valores incompletos adiante — não é uma questão de performance, é de <em>corretude</em>. A ordem certa garante que consumidores são processados antes de suas dependências.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">No grafo "diamante" (um nó <code>d</code> alimenta dois caminhos, <code>x</code> e <code>y</code>, que só se reencontram depois, em <code>loss</code>), quando <code>d</code> pode ser processado no backward?</p>
+    <div class="options">
+      <button class="option" data-key="a">assim que o primeiro caminho (<code>x</code> ou <code>y</code>) contribuir, sem esperar o outro</button>
+      <button class="option" data-key="b">só depois que <strong>ambos</strong> os caminhos, <code>x</code> e <code>y</code>, já contribuíram — mesmo <code>d</code> não sendo folha</button>
+      <button class="option" data-key="c">antes de qualquer um dos dois, porque <code>d</code> vem antes deles no forward</button>
+      <button class="option" data-key="d">a ordem não importa nesse caso específico, só em grafos maiores</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Esse é o caso clássico que testa a ordenação topológica: mesmo <code>d</code> não sendo uma folha, ele só está "pronto" depois que todos os seus consumidores (<code>x</code> e <code>y</code>) já propagaram gradiente pra ele. Foi exatamente um bug real do projeto (documentado no <code>HISTORY.md</code>) quando o algoritmo esquecia de marcar nós intermediários compartilhados corretamente.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Pra que serve <code>zeroGrad()</code> e quando ele deve ser chamado?</p>
+    <div class="options">
+      <button class="option" data-key="a">depois de cada <code>backward()</code>, pra "limpar" o resultado antes de usá-lo</button>
+      <button class="option" data-key="b">só uma vez, no início do treinamento</button>
+      <button class="option" data-key="c">antes de cada novo <code>backward()</code> — como o gradiente acumula, sem zerar o gradiente do passo anterior se somaria ao atual</button>
+      <button class="option" data-key="d">nunca — <code>backward()</code> já zera os gradientes automaticamente antes de rodar</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Como <code>accumulate</code> sempre soma (nunca sobrescreve), sem chamar <code>zeroGrad()</code> antes de um novo <code>backward()</code> o gradiente do passo de treino anterior ficaria misturado com o atual — corrompendo o treinamento silenciosamente.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Mesmo grafo do <code>HISTORY.md</code> (<code>c = a + b</code>, <code>d = c * a</code>), mas agora com <code>a = 3</code>, <code>b = 4</code>. Depois de <code>d.backward()</code>, qual é <code>a.grad</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">10</button>
+      <button class="option" data-key="b">7</button>
+      <button class="option" data-key="c">21</button>
+      <button class="option" data-key="d">13</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A — 10.</strong> Forward: <code>c=3+4=7</code>, <code>d=c·a=7·3=21</code>. Backward, semeando <code>d.grad=1</code>: contribuição direta do <code>mul</code>, <code>a.grad += d.grad·c = 1·7 = 7</code>; contribuição via <code>add</code>, primeiro <code>c.grad += d.grad·a = 1·3 = 3</code>, depois <code>a.grad += c.grad·1 = 3</code>. Total: <code>a.grad = 7+3 = 10</code>. Verificação simbólica: <code>d=(a+b)·a=a²+ab</code>, <code>∂d/∂a=2a+b=2·3+4=10</code> ✓.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Rodando uma operação dentro de um bloco <code>noGrad { ... }</code>, o que acontece?</p>
+    <div class="options">
+      <button class="option" data-key="a">o forward para de funcionar — só operações fora de <code>noGrad</code> calculam valores</button>
+      <button class="option" data-key="b">o forward funciona normalmente, mas o resultado sai com <code>previous</code> vazio e <code>requiresGradient = false</code> — o grafo não é construído</button>
+      <button class="option" data-key="c">o gradiente é calculado normalmente, só não é impresso no console</button>
+      <button class="option" data-key="d"><code>noGrad</code> só afeta tensores criados fora dele, não os de dentro</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Construir o grafo (<code>previous</code>/<code>_backward</code>) tem custo de memória e tempo que é puro desperdício em inferência (nunca vamos chamar <code>backward()</code>). <code>noGrad</code> desliga só a <em>gravação</em> do grafo — o valor calculado no forward continua correto, só não fica registrado como desfazer o cálculo.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">A ordenação topológica é construída via DFS que só adiciona um nó à lista de saída <strong>depois</strong> de visitar todos os seus predecessores, e depois a lista é invertida. Por que isso garante "consumidores antes de dependências"?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque, se <code>X</code> é predecessor de <code>Y</code>, o DFS visita <code>X</code> (durante a exploração dos predecessores de <code>Y</code>) antes de adicionar <code>Y</code> à lista — então <code>X</code> entra antes de <code>Y</code> na lista, e depois de inverter, <code>Y</code> vem antes de <code>X</code></button>
+      <button class="option" data-key="b">porque a lista já nasce na ordem certa, sem precisar inverter — a inversão é só uma otimização opcional</button>
+      <button class="option" data-key="c">porque DFS sempre visita os nós em ordem alfabética de nome</button>
+      <button class="option" data-key="d">isso não é garantido em geral — só funciona em grafos com no máximo 2 caminhos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> O ponto-chave é o "depois de visitar todos os predecessores": isso força qualquer dependência (<code>X</code>) a já estar na lista antes do nó que depende dela (<code>Y</code>) ser adicionado. A lista pré-inversão está em ordem "dependências primeiro"; invertendo, vira "consumidores primeiro" — exatamente o que <code>backward()</code> precisa.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Um tensor <code>x</code> é usado como entrada em <strong>3</strong> operações diferentes, cujos resultados eventualmente convergem (direta ou indiretamente) numa perda escalar <code>L</code>. Depois de <code>L.backward()</code>, quantas contribuições distintas <code>x.grad</code> deve ter acumulado?</p>
+    <div class="options">
+      <button class="option" data-key="a">1 — só a última operação processada conta</button>
+      <button class="option" data-key="b">3 — uma por caminho, cada uma somada via <code>accumulate</code>, exatamente como a regra da cadeia multivariável generaliza pra qualquer número de caminhos (não só 2)</button>
+      <button class="option" data-key="c">0, porque <code>x</code> não é a raiz do grafo</button>
+      <button class="option" data-key="d">depende da ordem em que as 3 operações foram criadas no código</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O exemplo do <code>HISTORY.md</code>/teoria usa 2 caminhos (<code>a</code> direto no <code>mul</code> e via <code>add</code>→<code>c</code>), mas o princípio — somar a contribuição de <em>cada</em> caminho que uma variável influencia a saída — generaliza pra qualquer número de usos. Não há limite de 2; são exatamente tantas contribuições quanto usos diretos de <code>x</code> como entrada de alguma operação no grafo.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 2 · autograd · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. O mecanismo de grafo + ordenação topológica + acumulação está sólido.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de seguir pra Etapa 3.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 02-autograd.md e computational-graph.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

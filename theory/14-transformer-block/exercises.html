@@ -1,0 +1,378 @@
+<title>Exercícios — Etapa 14: Bloco Transformer — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Bloco Transformer</h1>
+    <div class="meta">mini-gpt<br>a soma que segura<br>a profundidade</div>
+    <div class="sub">Etapa 14 — Bloco Transformer · 15 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="14-transformer-block.md">14-transformer-block.md</a> e <a href="block.html">block.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual é a estrutura do bloco que este projeto constrói?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>LN(X + MHA(X))</code>, depois <code>LN(H + MLP(H))</code></button>
+      <button class="option" data-key="b"><code>H = X + MHA(LN(X))</code>, depois <code>Y = H + MLP(LN(H))</code></button>
+      <button class="option" data-key="c"><code>Y = MLP(MHA(LN(X)))</code></button>
+      <button class="option" data-key="d"><code>Y = LN(MHA(X) + MLP(X))</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> É o pre-LN: normaliza <em>antes</em> de cada subcamada e soma o resultado ao que entrou. A opção A é o post-LN do paper original, que o GPT-2 abandonou. A opção C não tem residual nenhum, e a D roda as duas subcamadas em paralelo sobre a mesma entrada (§1 e §4).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Quantos tensores de parâmetro o bloco tem?</p>
+    <div class="options">
+      <button class="option" data-key="a">10 — 6 da atenção e 4 do MLP</button>
+      <button class="option" data-key="b">14 — os 12 das camadas mais 2 das somas residuais</button>
+      <button class="option" data-key="c">12 — 6 da atenção, 4 do MLP e 2 em cada <code>LayerNorm</code></button>
+      <button class="option" data-key="d">depende de <code>nHeads</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Cada <code>LayerNorm</code> traz <code>γ</code> e <code>β</code>, então os dois somam 4. A opção B é a armadilha: <strong>as somas residuais não têm parâmetro nenhum</strong> — é justamente o que as torna baratas. E a contagem não muda com <code>nHeads</code>, como a Etapa 12 §2 mostrou (§1).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que uma conexão residual faz?</p>
+    <div class="options">
+      <button class="option" data-key="a">soma a entrada da subcamada à saída dela: <code>y = x + f(x)</code></button>
+      <button class="option" data-key="b">pula a subcamada quando o gradiente fica pequeno demais</button>
+      <button class="option" data-key="c">guarda uma cópia da entrada para usar no backward</button>
+      <button class="option" data-key="d">normaliza a saída da subcamada pela escala da entrada</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Uma soma, e nada mais. A opção B sugere um mecanismo condicional que não existe — o caminho direto está sempre lá, em toda passada. O nome "residual" vem de que <code>f</code> passa a aprender o <em>resíduo</em>: a correção sobre o que já chegou (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual o formato da saída do bloco, dada uma entrada <code>[B, T, dModel]</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[B, T, 4·dModel]</code>, por causa da expansão do MLP</button>
+      <button class="option" data-key="b"><code>[B, nHeads, T, dModel]</code></button>
+      <button class="option" data-key="c"><code>[B, T, 2·dModel]</code>, atenção e MLP concatenados</button>
+      <button class="option" data-key="d"><code>[B, T, dModel]</code> — o mesmo da entrada</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Os seis passos do bloco preservam o formato. A expansão do MLP existe só dentro dele, e a divisão em cabeças só dentro da atenção — as duas desfazem o que fizeram antes de devolver. É essa constância que permite empilhar o bloco <code>L</code> vezes (§1).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Qual o gradiente de <code>y = x + f(x)</code> em relação a <code>x</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>dY · ∂f/∂X</code> — a soma não contribui</button>
+      <button class="option" data-key="b"><code>dY + dY · ∂f/∂X</code></button>
+      <button class="option" data-key="c"><code>dY · (1 + f(x))</code></button>
+      <button class="option" data-key="d"><code>2 · dY · ∂f/∂X</code>, porque <code>x</code> aparece duas vezes</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A soma repassa o gradiente inteiro para os dois lados, e <code>x</code> aparece em dois caminhos — direto e pela subcamada. Os dois se somam. A opção D erra ao supor que os dois caminhos são iguais: só um deles passa pelo Jacobiano. No exemplo do capítulo, <code>dY = [1, 10]</code> dá <code>dX = [-0.5, 13.1]</code>, contra <code>[-1.5, 3.1]</code> sem o residual (§3).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que somar a entrada, em vez de concatená-la à saída da subcamada?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque concatenar perderia informação</button>
+      <button class="option" data-key="b">porque a soma é mais rápida de calcular</button>
+      <button class="option" data-key="c">porque concatenar dobraria a última dimensão, e o bloco deixaria de ser empilhável sem uma matriz nova</button>
+      <button class="option" data-key="d">porque o backward da concatenação não existe no <code>scalagrad</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Concatenar preserva <em>mais</em> informação que somar, então a opção A está errada. O problema é o formato: <code>[B,T,dModel]</code> viraria <code>[B,T,2·dModel]</code>, e voltar ao tamanho original exigiria uma projeção — parâmetros a mais para fazer o que a soma faz de graça (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Quantos parâmetros tem um bloco, em função de <code>dModel</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>12·dModel² + 11·dModel</code></button>
+      <button class="option" data-key="b"><code>8·dModel² + 5·dModel</code></button>
+      <button class="option" data-key="c"><code>4·dModel² + 2·dModel</code></button>
+      <button class="option" data-key="d"><code>12·dModel²</code> — os vieses são desprezíveis</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Atenção <code>4d² + 2d</code>, MLP <code>8d² + 5d</code>, dois LayerNorm <code>4d</code>. As opções B e C são as parcelas isoladas. A D é sedutora porque os vieses <em>são</em> desprezíveis na prática — com <code>dModel = 768</code> valem 0,04% do bloco — mas a fórmula exata os inclui (§6).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Se as duas subcamadas devolvessem exatamente zero, o que o bloco faria?</p>
+    <div class="options">
+      <button class="option" data-key="a">devolveria zero</button>
+      <button class="option" data-key="b">devolveria a entrada normalizada</button>
+      <button class="option" data-key="c">travaria, porque o gradiente seria zero</button>
+      <button class="option" data-key="d">devolveria a entrada intacta — seria a identidade</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> <code>Y = X + 0 + 0 = X</code>. Isso é uma propriedade útil, e não um caso degenerado: um bloco consegue "se desligar" aprendendo a produzir saída pequena, e uma pilha recém-inicializada fica perto da identidade em vez de ser um embaralhador. Sem residual, não atrapalhar exigiria aprender a copiar a entrada — bem mais difícil que aprender a devolver zero (§2).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">O que o post-LN perde em relação ao pre-LN?</p>
+    <div class="options">
+      <button class="option" data-key="a">a capacidade de normalizar cada posição isoladamente</button>
+      <button class="option" data-key="b">o caminho direto: em post-LN todo caminho atravessa um <code>LayerNorm</code>, inclusive o residual</button>
+      <button class="option" data-key="c">a máscara causal, que é desfeita pela normalização</button>
+      <button class="option" data-key="d">nada — as duas formas são equivalentes, e a escolha é de gosto</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Em <code>LN(X + Sub(X))</code>, o <code>X</code> puro não chega ao fim: ele passa pelo Jacobiano do <code>LN</code>, que entra no produto de todas as camadas — exatamente o produto que a §3 mostrou morrer. Medido no capítulo: depois de 3 blocos, o desvio padrão em post-LN é <code>1.0000</code> exato, nos três, porque cada bloco descarta a escala que recebeu (§4).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Com 24 camadas <strong>sem</strong> residual e <code>f' ~ N(0, 0.25²)</code>, a mediana de <code>|gradiente|</code> que chega à primeira camada fica em torno de:</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>0.45</code> — parecido com o caso residual</button>
+      <button class="option" data-key="b"><code>1e-6</code></button>
+      <button class="option" data-key="c"><code>1e-21</code></button>
+      <button class="option" data-key="d">cresce sem limite, porque os fatores podem ser maiores que 1</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Medido em 20 mil sorteios: mediana <code>1.2e-21</code> sem residual e <code>0.453</code> com. E não é sorte: <strong>100%</strong> dos casos sem residual ficaram abaixo de <code>1e-6</code>, e <strong>0%</strong> dos casos com residual. O produto de fatores menores que 1 decai exponencialmente — em escala logarítmica, uma reta (§3, FIG 3).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Numa pilha de <code>L</code> blocos, cada subcamada lê <code>LN(x)</code> e escreve um incremento de variância 1. Qual a variância na saída da pilha?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>1 + 2L</code>, porque há <code>2L</code> subcamadas e as variâncias somam</button>
+      <button class="option" data-key="b"><code>1</code>, porque o LayerNorm renormaliza a cada bloco</button>
+      <button class="option" data-key="c"><code>2ᴸ</code>, porque cada bloco dobra a escala</button>
+      <button class="option" data-key="d"><code>L</code>, um por bloco</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Um bloco tem <strong>duas</strong> subcamadas, então uma pilha de <code>L</code> tem <code>2L</code> incrementos, mais a variância 1 da entrada. Com <code>L = 12</code> isso dá 25, ou norma <code>×5</code>. A opção B é o comportamento do post-LN, não do pre-LN — em pre-LN nada renormaliza o fluxo, e é por isso que a Etapa 15 precisa de um LayerNorm final (§5).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O GPT-2 escala as camadas que escrevem no fluxo residual por <code>1/√(2·nLayers)</code>. Por que a raiz?</p>
+    <div class="options">
+      <button class="option" data-key="a">para compensar a divisão por <code>√dHead</code> da atenção</button>
+      <button class="option" data-key="b">é empírico — testaram vários expoentes e esse funcionou melhor</button>
+      <button class="option" data-key="c">porque o gradiente cresce com a raiz da profundidade</button>
+      <button class="option" data-key="d">porque o que soma é a variância, e multiplicar por <code>c</code> multiplica a variância por <code>c²</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Para que <code>2L</code> incrementos somem 1 no total, cada um precisa contribuir com <code>1/(2L)</code> de <em>variância</em> — logo <code>c = 1/√(2L)</code>. A conta fecha exata: <code>Var = 1 + 2L·(1/2L) = 2</code>, para qualquer profundidade. Com <code>1/(2L)</code> a variância total tenderia a 1, e os blocos praticamente não escreveriam nada (§5).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Num modelo pre-LN, por que existe um <code>LayerNorm</code> final depois do último bloco?</p>
+    <div class="options">
+      <button class="option" data-key="a">para que a máscara causal continue valendo na saída</button>
+      <button class="option" data-key="b">porque o fluxo residual nunca foi normalizado, e chega ao fim numa escala que depende da profundidade</button>
+      <button class="option" data-key="c">para converter os logits em probabilidades</button>
+      <button class="option" data-key="d">porque a projeção final exige entrada de média zero por definição</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Em pre-LN, cada <code>LayerNorm</code> normaliza só o que entra numa subcamada — o fluxo em si atravessa a pilha inteira sem nunca ser renormalizado, acumulando <code>2L</code> incrementos. O <code>ln_f</code> existe para dar à projeção final uma escala previsível. Quem converte logits em probabilidade é o softmax, não o LayerNorm (§4 e §5).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Você troca o bloco de pre-LN para post-LN por engano. Qual teste reprova?</p>
+    <div class="options">
+      <button class="option" data-key="a">o gradient check em <code>x</code> e nos 14 parâmetros</button>
+      <button class="option" data-key="b">o teste de formato preservado</button>
+      <button class="option" data-key="c">a comparação de valores contra uma referência montada com as subcamadas expostas</button>
+      <button class="option" data-key="d">o teste de causalidade</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> As outras três passam. O formato é idêntico nas duas formas. A causalidade vem da máscara da atenção, que não foi tocada. E o gradient check <em>confere coerência, nunca intenção</em> — <code>LN(X + Sub(X))</code> é uma função perfeitamente derivável, e o backward dela está certo. Só comparar números contra uma referência montada de outro jeito separa as duas (§7).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q15</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Por descuido, o bloco usa a <strong>mesma</strong> instância de <code>LayerNorm</code> nas duas posições. O que pega isso?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>parameters.toSet.size == 14</code> — a lista passa a ter tensores repetidos</button>
+      <button class="option" data-key="b">o gradient check, porque o gradiente seria acumulado duas vezes</button>
+      <button class="option" data-key="c">o teste de formato, porque <code>γ</code> teria o tamanho errado</button>
+      <button class="option" data-key="d">nada — compartilhar o LayerNorm é uma otimização válida</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Com a mesma instância, <code>parameters</code> lista <code>γ</code> e <code>β</code> duas vezes cada, e o conjunto cai para 12 elementos distintos. O formato não muda, e o gradient check <em>passa</em>: acumular gradiente de dois usos é o comportamento correto para um parâmetro compartilhado (Etapa 3 §6). O modelo até treinaria — com menos capacidade e sem ninguém avisar (§7).</div>
+  </div>
+</div>
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A soma residual e a escolha do pre-LN estão sólidas.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 14-transformer-block.md e block.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>
+
+<footer style="max-width: 760px; margin: 4em auto 0; padding: 1.2em 24px 0; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;">mini-gpt · theory/14-transformer-block · exercícios</footer>

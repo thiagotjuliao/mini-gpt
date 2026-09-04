@@ -1,0 +1,216 @@
+<title>Grafo Computacional & Ordenação Topológica — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.4rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .callout { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 10px 16px; margin: 1.4em 0; font-size: 0.95rem; }
+  .callout .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.35em; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 1.2em 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1.5px solid var(--line-strong); }
+  .node { fill: var(--plate-bg); stroke: var(--line-strong); stroke-width: 1.5; }
+  .node.leaf { fill: var(--code-bg); }
+  .node.warm { fill: var(--accent-soft); stroke: var(--accent); }
+  .node.accent { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .node-text { font-family: "JetBrains Mono", monospace; font-size: 14px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .op-text { font-family: "JetBrains Mono", monospace; font-size: 10px; fill: var(--ink-soft); text-anchor: middle; text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .edge { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .edge.hot { stroke: var(--accent2); stroke-width: 1.8; }
+  .edge.sum { stroke: var(--accent); stroke-width: 1.8; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+    <marker id="arrowhead-sum" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Grafo Computacional &amp; Ordenação Topológica</h1>
+    <div class="meta">mini-gpt<br>núcleo de tensores</div>
+    <div class="sub">Folha 02 · Etapa 2 — Autograd · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> Cada operação lembra de onde veio</h2>
+  <p>
+    Toda operação (<code>a + b</code>, <code>c * a</code>, ...) cria um tensor de saída que guarda dois pedaços de
+    memória: <code>previous</code> (os tensores de entrada) e <code>_backward</code> (uma closure que sabe propagar
+    o gradiente pra essas entradas). Ligando essas referências, formam um <strong>DAG</strong> — grafo acíclico
+    dirigido: nós são tensores, arestas apontam de uma operação pros seus inputs.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 190" width="460">
+        <circle cx="60" cy="40" r="28" class="node leaf"></circle><text x="60" y="40" class="node-text">a</text>
+        <circle cx="60" cy="150" r="28" class="node leaf"></circle><text x="60" y="150" class="node-text">b</text>
+        <circle cx="230" cy="95" r="28" class="node accent"></circle><text x="230" y="95" class="node-text">c</text>
+        <circle cx="400" cy="95" r="28" class="node warm"></circle><text x="400" y="95" class="node-text">d</text>
+
+        <path d="M85,52 L205,85" class="edge" marker-end="url(#arrowhead)"></path>
+        <path d="M85,138 L205,105" class="edge" marker-end="url(#arrowhead)"></path>
+        <text x="145" y="65" class="op-text">add</text>
+
+        <path d="M258,95 L372,95" class="edge" marker-end="url(#arrowhead)"></path>
+        <text x="315" y="85" class="op-text">mul</text>
+
+        <path d="M75,60 Q250,180 372,105" class="edge hot" marker-end="url(#arrowhead-hot)"></path>
+        <text x="230" y="178" class="lbl" fill="var(--accent2)" text-anchor="middle">a também entra direto no mul (2º caminho)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 1</span><code>c = a + b</code>, <code>d = c * a</code>. Repare que <code>a</code> aparece <strong>duas vezes</strong> como entrada de <code>d</code> — uma vez direto (aresta destacada), outra vez através de <code>c</code>. É esse "múltiplos caminhos" que faz o gradiente de <code>a</code> precisar somar duas contribuições no backward (§3).</div>
+  </div>
+
+  <h2><span class="num">§2</span> Por que a ordem de visita importa</h2>
+  <p>
+    <code>backward()</code> só pode processar um nó depois que <strong>todo</strong> gradiente que ele vai
+    receber já chegou — de todo mundo que o usa como entrada. Processar fora de ordem soma gradiente parcial e
+    propaga valores incompletos adiante. A ordem certa é a <strong>topológica reversa</strong>: a raiz primeiro,
+    as folhas por último.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 220" width="460">
+        <text x="10" y="18" class="lbl strong">grafo "diamante": d é compartilhado por x e y</text>
+
+        <circle cx="70" cy="50" r="24" class="node leaf"></circle><text x="70" y="50" class="node-text" style="font-size:12px">a</text>
+        <circle cx="230" cy="50" r="24" class="node warm"></circle><text x="230" y="50" class="node-text" style="font-size:12px">d</text>
+        <circle cx="390" cy="50" r="24" class="node leaf"></circle><text x="390" y="50" class="node-text" style="font-size:12px">b</text>
+
+        <circle cx="140" cy="130" r="24" class="node"></circle><text x="140" y="130" class="node-text" style="font-size:12px">x</text>
+        <circle cx="320" cy="130" r="24" class="node"></circle><text x="320" y="130" class="node-text" style="font-size:12px">y</text>
+
+        <circle cx="230" cy="200" r="24" class="node accent"></circle><text x="230" y="200" class="node-text" style="font-size:12px">loss</text>
+
+        <path d="M85,66 L128,113" class="edge" marker-end="url(#arrowhead)"></path>
+        <path d="M215,66 L152,113" class="edge" marker-end="url(#arrowhead)"></path>
+        <path d="M245,66 L308,113" class="edge" marker-end="url(#arrowhead)"></path>
+        <path d="M375,66 L332,113" class="edge" marker-end="url(#arrowhead)"></path>
+        <path d="M155,150 L215,184" class="edge" marker-end="url(#arrowhead)"></path>
+        <path d="M305,150 L245,184" class="edge" marker-end="url(#arrowhead)"></path>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 2</span><code>d</code> alimenta <strong>dois</strong> caminhos (<code>x</code> e <code>y</code>) que só se reencontram em <code>loss</code>. <code>d</code> só pode ser processado depois que <strong>ambos</strong>, <code>x</code> e <code>y</code>, já contribuíram — mesmo <code>d</code> não sendo folha. A ordenação topológica (DFS que só adiciona um nó depois de visitar todos os predecessores, depois invertida) garante isso automaticamente.</div>
+  </div>
+
+  <h2><span class="num">§3</span> Backward: gradiente convergindo nos nós reusados</h2>
+  <p>
+    Rodando <code>backward()</code> no grafo da FIG. 1, o gradiente de <code>a</code> recebe uma contribuição
+    direta de <code>mul</code> <strong>e</strong> uma contribuição indireta, através de <code>c</code> (que veio
+    de <code>add</code>). As duas se <strong>somam</strong> — nunca uma sobrescreve a outra.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 190" width="460">
+        <circle cx="60" cy="150" r="28" class="node warm"></circle><text x="60" y="150" class="node-text">a</text>
+        <circle cx="230" cy="95" r="28" class="node accent"></circle><text x="230" y="95" class="node-text">c</text>
+        <circle cx="400" cy="40" r="28" class="node"></circle><text x="400" y="40" class="node-text">d</text>
+
+        <path d="M375,55 Q300,80 258,90" class="edge sum" marker-end="url(#arrowhead-sum)"></path>
+        <text x="330" y="70" class="lbl" fill="var(--accent)">grad · a</text>
+
+        <path d="M205,105 Q140,130 88,142" class="edge sum" marker-end="url(#arrowhead-sum)"></path>
+        <text x="155" y="135" class="lbl" fill="var(--accent)">grad · 1</text>
+
+        <path d="M378,55 Q220,175 88,158" class="edge sum" marker-end="url(#arrowhead-sum)"></path>
+        <text x="230" y="185" class="lbl" fill="var(--accent)">grad · c   (caminho direto)</text>
+
+        <text x="60" y="120" class="lbl strong">a.grad = (grad·c) + (grad·a·1)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 3</span>Duas setas chegam em <code>a</code>: uma vinda do <code>mul</code> direto (<code>∂d/∂a = c</code>), outra através do <code>add</code> (<code>∂d/∂c · ∂c/∂a = a · 1</code>). <code>a.gradient.accumulate(...)</code> soma as duas — é literalmente por isso que o método se chama <em>accumulate</em>, não <em>set</em>.</div>
+  </div>
+
+  <h2><span class="num">§4</span> Passando os números (o exemplo do <code class="code-inline">HISTORY.md</code>)</h2>
+  <p><code>a = 2</code>, <code>b = 3</code>. Forward: <code>c = a+b = 5</code>, <code>d = c*a = 10</code>.</p>
+  <table>
+    <tr><th>Passo</th><th>Cálculo</th><th>Resultado</th></tr>
+    <tr><td>Semear</td><td><code>d.grad = 1</code></td><td>1</td></tr>
+    <tr><td><code>mul</code>: <code>∂d/∂c</code></td><td><code>c.grad += d.grad · a = 1·2</code></td><td><code>c.grad = 2</code></td></tr>
+    <tr><td><code>mul</code>: <code>∂d/∂a</code> (caminho direto)</td><td><code>a.grad += d.grad · c = 1·5</code></td><td><code>a.grad = 5</code></td></tr>
+    <tr><td><code>add</code>: <code>∂c/∂a</code> (caminho via c)</td><td><code>a.grad += c.grad · 1 = 2</code></td><td><code>a.grad = 5+2 = 7</code></td></tr>
+    <tr><td><code>add</code>: <code>∂c/∂b</code></td><td><code>b.grad += c.grad · 1 = 2</code></td><td><code>b.grad = 2</code></td></tr>
+  </table>
+  <p>
+    Verificação simbólica direta: <code>d = (a+b)·a = a² + ab</code>. <code>∂d/∂a = 2a+b = 2(2)+3 = 7</code> ✓,
+    <code>∂d/∂b = a = 2</code> ✓ — bate exatamente com o grafo.
+  </p>
+
+  <h2><span class="num">§5</span> Referência rápida</h2>
+  <table>
+    <tr><th>Conceito</th><th>O que garante</th><th>Onde mora</th></tr>
+    <tr><td><code>previous</code> / <code>_backward</code></td><td>Cada tensor de saída lembra de onde veio e como propagar gradiente pra lá</td><td><code>core/Tensor.scala</code>, criado em cada op de <code>ops/TensorOps.scala</code></td></tr>
+    <tr><td>Ordenação topológica</td><td>Visita cada nó só depois de todos os seus predecessores</td><td><code>Tensor.topologicalSort</code> (privado)</td></tr>
+    <tr><td><code>backward()</code></td><td>Semeia <code>1.0</code> na raiz, roda a ordem topológica reversa</td><td><code>Tensor.backward</code></td></tr>
+    <tr><td><code>Gradient.accumulate</code></td><td>Soma contribuições de múltiplos caminhos — nunca sobrescreve</td><td><code>core/Gradient.scala</code></td></tr>
+    <tr><td><code>noGrad</code></td><td>Desliga a construção do grafo (útil em inferência, sem custo de guardar closures)</td><td><code>Tensor.noGrad</code></td></tr>
+  </table>
+
+  <footer>mini-gpt — etapa 2 · autograd</footer>
+</div>

@@ -1,0 +1,320 @@
+<title>Exercícios — Etapa 1: Tensor — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  /* scoreboard */
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Tensor</h1>
+    <div class="meta">mini-gpt<br>núcleo de tensores</div>
+    <div class="sub">Etapa 1 — Tensor · 10 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="01-tensor.md">01-tensor.md</a> e <a href="strides-and-memory.html">strides-and-memory.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+    Não há certo/errado que trave o restante: dá pra responder em qualquer ordem.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual é o <strong>rank</strong> de um tensor com shape <code>(32, 28, 28)</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">2</button>
+      <button class="option" data-key="b">3</button>
+      <button class="option" data-key="c">32</button>
+      <button class="option" data-key="d">784</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B — 3.</strong> Rank é o número de <em>dimensões</em> do shape, não o valor de nenhuma delas. <code>(32, 28, 28)</code> tem 3 dimensões (ex.: batch, altura, largura) — os valores 32/28/28 são os tamanhos de cada uma, irrelevantes pro rank.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Em layout <strong>row-major</strong>, qual dimensão sempre tem <code>stride = 1</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">A primeira dimensão</button>
+      <button class="option" data-key="b">A última dimensão</button>
+      <button class="option" data-key="c">Depende do shape</button>
+      <button class="option" data-key="d">Nenhuma — stride 1 não é garantido</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B — a última.</strong> Row-major percorre a última dimensão primeiro, então ela fica contígua na memória física: andar uma posição nela sempre pula exatamente 1 posição no array linear. A fórmula geral (<code>stride[k] = produto dos shapes à direita de k</code>) força isso: não há nada à direita da última dimensão, então o produto vazio é 1.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext"><code>reshape</code> e <code>transpose</code>, como implementados no projeto, ______ o array <code>data</code> físico.</p>
+    <div class="options">
+      <button class="option" data-key="a">sempre copiam</button>
+      <button class="option" data-key="b">nunca copiam — só trocam <code>shape</code>/<code>strides</code></button>
+      <button class="option" data-key="c">copiam apenas se o rank mudar</button>
+      <button class="option" data-key="d">copiam apenas no transpose, nunca no reshape</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O array físico já contém todos os números — essas operações só trocam os <em>metadados</em> (shape/strides), reinterpretando a mesma fita 1D. É por isso que <code>reshape</code> exige que o <code>size</code> (produto do shape) seja igual antes e depois: é a mesma memória, só lida de outro jeito.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Para um tensor de shape <code>(2, 3, 4)</code>, qual é <code>stride[0]</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">12</button>
+      <button class="option" data-key="b">4</button>
+      <button class="option" data-key="c">3</button>
+      <button class="option" data-key="d">24</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A — 12.</strong> <code>stride[k]</code> é o produto de todas as dimensões à <em>direita</em> de <code>k</code>. Pra <code>k=0</code>, o que está à direita é <code>(3, 4)</code>, então <code>stride[0] = 3·4 = 12</code>.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Matriz de shape <code>(3, 4)</code>, strides <code>(4, 1)</code>. Qual é o índice físico do elemento lógico <code>(2, 1)</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">8</button>
+      <button class="option" data-key="b">9</button>
+      <button class="option" data-key="c">6</button>
+      <button class="option" data-key="d">12</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B — 9.</strong> <code>idx = i·stride[0] + j·stride[1] = 2·4 + 1·1 = 8 + 1 = 9</code>.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Depois de <code>.transpose()</code> numa matriz de shape <code>(3, 4)</code> (strides originais <code>(4, 1)</code>), o resultado tem shape <code>(4, 3)</code>. Quais são as novas strides?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>(4, 1)</code> — sem mudança</button>
+      <button class="option" data-key="b"><code>(3, 1)</code></button>
+      <button class="option" data-key="c"><code>(1, 4)</code></button>
+      <button class="option" data-key="d"><code>(1, 3)</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: C — <code>(1, 4)</code>.</strong> Transpose troca a <em>ordem</em> de shape e strides juntos, sem recalcular nada: a dimensão que era a primeira (stride 4) passa a ser a última, e vice-versa. O array físico não muda, só a ordem em que shape/strides são lidos.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Um tensor recém-transposto (ex.: <code>(3,4)</code> strides <code>(4,1)</code> → <code>(4,3)</code> strides <code>(1,4)</code>) está, em relação à memória física:</p>
+    <div class="options">
+      <button class="option" data-key="a">contíguo, porque transpose nunca quebra contiguidade</button>
+      <button class="option" data-key="b">não-contíguo, porque percorrer sua última dimensão pula de 4 em 4 na memória, não de 1 em 1</button>
+      <button class="option" data-key="c">contíguo, desde que o rank seja 2</button>
+      <button class="option" data-key="d">indefinido — depende dos valores armazenados, não do shape/strides</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Contiguidade é sobre <em>strides</em>, não sobre os valores guardados. Na transposta, a última dimensão (a que "deveria" ter stride 1 em row-major canônico) tem stride 4 — percorrê-la pula de 4 em 4 na memória física. É exatamente pra recuperar uma cópia real e contígua nessa nova ordem que existe <code>.contiguous()</code>.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Tensor de shape <code>(5, 6, 7)</code>, row-major. Qual o índice físico do elemento lógico <code>(2, 3, 4)</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">109</button>
+      <button class="option" data-key="b">106</button>
+      <button class="option" data-key="c">115</button>
+      <button class="option" data-key="d">191</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A — 109.</strong> Strides: <code>stride[2]=1</code>, <code>stride[1]=7</code>, <code>stride[0]=6·7=42</code>. <code>idx = 2·42 + 3·7 + 4·1 = 84 + 21 + 4 = 109</code>. (106 sai se você confundir <code>stride[1]</code> com o tamanho da dimensão, <code>6</code>, em vez de <code>7</code>; 191 sai se inverter a ordem das strides.)</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Na transformação de Box-Muller, <code>z0 = sqrt(-2·ln(u1))·cos(2π·u2)</code>. Pensando na intuição geométrica (coordenadas polares) da teoria, o que cada amostra uniforme controla?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>u1</code> controla o ângulo θ, <code>u2</code> controla o raio R</button>
+      <button class="option" data-key="b"><code>u1</code> controla o raio R (via inverse transform sampling da exponencial), <code>u2</code> controla o ângulo θ (uniforme em <code>[0, 2π)</code>)</button>
+      <button class="option" data-key="c">as duas controlam apenas o ângulo — o raio é sempre 1</button>
+      <button class="option" data-key="d">não há relação com coordenadas polares nessa fórmula</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Pensando em <code>(Z0, Z1)</code> como ponto 2D: não há direção privilegiada, então o ângulo θ é uniforme em <code>[0, 2π)</code> — vem direto de <code>u2</code>. Já <code>R²</code> segue distribuição exponencial (consequência da densidade gaussiana 2D depender só do raio), e <code>u1</code> alimenta essa amostragem via <code>sqrt(-2·ln(u1))</code>. <code>cos</code>/<code>sin</code> só convertem <code>(R, θ)</code> de volta pra cartesiano.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">A = tensor shape <code>(3,4)</code>, strides <code>(4,1)</code>. B = <code>A.transpose()</code> → shape <code>(4,3)</code>, strides <code>(1,4)</code>, mesmo array <code>data</code>. Qual relação vale <strong>sempre</strong>, para qualquer <code>(i,j)</code> válido?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>B.index(i,j) == A.index(i,j)</code></button>
+      <button class="option" data-key="b"><code>B.index(j,i) == A.index(i,j)</code></button>
+      <button class="option" data-key="c">só vale quando <code>i == j</code></button>
+      <button class="option" data-key="d"><code>B.index(j,i) == A.index(i,j) + 1</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Transpose troca os <em>papéis</em> dos eixos, não o array físico: o elemento que em A é acessado como <code>(i,j)</code> passa a ser acessado em B como <code>(j,i)</code>, apontando pro mesmo número na memória. Conferindo com Q5/Q6: <code>A.index(1,2) = 1·4+2·1 = 6</code>; em B, <code>B.index(2,1) = 2·1+1·4 = 6</code> — bate. É exatamente o item de validação manual do checklist da Etapa 1.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 1 · tensor · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. Os conceitos de shape/stride/indexação estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de seguir pra Etapa 2.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 01-tensor.md e strides-and-memory.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

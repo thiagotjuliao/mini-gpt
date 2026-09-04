@@ -1,0 +1,267 @@
+<title>Matrix Multiplication — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .callout { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 10px 16px; margin: 1.4em 0; font-size: 0.95rem; }
+  .callout .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.35em; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 1.2em 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1.5px solid var(--line-strong); }
+  .cell-rect { fill: var(--plate-bg); stroke: var(--line-strong); stroke-width: 1.5; }
+  .cell-rect.accent { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell-rect.warm { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell-rect.dim { fill: var(--code-bg); stroke: var(--line); }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 13px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .arrow.hot { stroke: var(--accent2); stroke-width: 1.8; }
+  .arrow.sum { stroke: var(--accent); stroke-width: 1.8; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+    <marker id="arrowhead-sum" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Matrix Multiplication</h1>
+    <div class="meta">mini-gpt<br>núcleo de tensores</div>
+    <div class="sub">Folha 04 · Etapa 3 — Operações Elementares · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> Forward: produto escalar linha·coluna</h2>
+  <p>
+    Pra <code>A</code> shape <code>(M,K)</code> e <code>B</code> shape <code>(K,N)</code>, cada elemento
+    <code>C[i,j]</code> é o produto escalar entre a <strong>linha <code>i</code> de <code>A</code></strong> e a
+    <strong>coluna <code>j</code> de <code>B</code></strong>: <code>C[i,j] = Σₖ A[i,k]·B[k,j]</code>.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 220" width="480">
+        <text x="10" y="18" class="lbl strong">A (2×2)</text>
+        <rect x="10" y="28" width="55" height="40" class="cell-rect warm"></rect><text x="37" y="50" class="cell-text">1</text>
+        <rect x="65" y="28" width="55" height="40" class="cell-rect warm"></rect><text x="92" y="50" class="cell-text">2</text>
+        <rect x="10" y="68" width="55" height="40" class="cell-rect"></rect><text x="37" y="90" class="cell-text">3</text>
+        <rect x="65" y="68" width="55" height="40" class="cell-rect"></rect><text x="92" y="90" class="cell-text">4</text>
+
+        <text x="160" y="18" class="lbl strong">B (2×2)</text>
+        <rect x="160" y="28" width="55" height="40" class="cell-rect accent"></rect><text x="187" y="50" class="cell-text">5</text>
+        <rect x="215" y="28" width="55" height="40" class="cell-rect dim"></rect><text x="242" y="50" class="cell-text">6</text>
+        <rect x="160" y="68" width="55" height="40" class="cell-rect accent"></rect><text x="187" y="90" class="cell-text">7</text>
+        <rect x="215" y="68" width="55" height="40" class="cell-rect dim"></rect><text x="242" y="90" class="cell-text">8</text>
+
+        <text x="330" y="18" class="lbl strong">C = A @ B (2×2)</text>
+        <rect x="330" y="28" width="55" height="40" class="cell-rect"></rect><text x="357" y="50" class="cell-text">19</text>
+        <rect x="385" y="28" width="55" height="40" class="cell-rect"></rect><text x="412" y="50" class="cell-text">22</text>
+        <rect x="330" y="68" width="55" height="40" class="cell-rect"></rect><text x="357" y="90" class="cell-text">43</text>
+        <rect x="385" y="68" width="55" height="40" class="cell-rect"></rect><text x="412" y="90" class="cell-text">50</text>
+
+        <path d="M120,48 Q145,10 330,45" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M187,110 Q187,150 355,68" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <text x="150" y="140" class="lbl" fill="var(--accent2)">linha 0 de A · coluna 0 de B</text>
+        <text x="150" y="155" class="lbl" fill="var(--accent2)">1·5 + 2·7 = 19  →  C[0,0]</text>
+
+        <text x="10" y="190" class="mono lbl strong">C[i,j] = Σₖ A[i,k]·B[k,j]</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 1</span>Linha 0 de <code>A</code> (destacada) com coluna 0 de <code>B</code> (destacada) produzem <code>C[0,0] = 1·5+2·7 = 19</code>. Cada célula de <code>C</code> repete isso pra sua própria combinação linha/coluna.</div>
+  </div>
+
+  <h2><span class="num">§2</span> Backward: derivando <code class="code-inline">dA</code> a partir da definição</h2>
+  <p>
+    Queremos <code>∂L/∂A[i,k]</code>, já tendo <code>dC[i,j] = ∂L/∂C[i,j]</code> pra todo <code>i,j</code>. Pela
+    regra da cadeia, somando sobre todo <code>C[i,j]</code> que depende de <code>A[i,k]</code> (todos os <code>j</code>,
+    com <code>i</code> fixo):
+  </p>
+  <pre>dA[i,k] = Σⱼ dC[i,j] · ∂C[i,j]/∂A[i,k] = Σⱼ dC[i,j] · B[k,j]</pre>
+  <p>
+    <code>Σⱼ dC[i,j]·B[k,j]</code> é exatamente a definição de <code>dC @ Bᵀ</code> — multiplicar <code>dC</code>
+    pela <strong>transposta</strong> de <code>B</code>. Por isso <code>dA = dC @ Bᵀ</code>: a mesma operação de
+    matmul do forward, só que com um dos operandos transposto.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 150" width="480">
+        <text x="10" y="18" class="lbl strong">dC (2×2)</text>
+        <rect x="10" y="28" width="55" height="40" class="cell-rect warm"></rect><text x="37" y="50" class="cell-text">1</text>
+        <rect x="65" y="28" width="55" height="40" class="cell-rect warm"></rect><text x="92" y="50" class="cell-text">1</text>
+        <rect x="10" y="68" width="55" height="40" class="cell-rect"></rect><text x="37" y="90" class="cell-text">1</text>
+        <rect x="65" y="68" width="55" height="40" class="cell-rect"></rect><text x="92" y="90" class="cell-text">1</text>
+
+        <text x="160" y="18" class="lbl strong">Bᵀ (2×2) — B transposta</text>
+        <rect x="160" y="28" width="55" height="40" class="cell-rect accent"></rect><text x="187" y="50" class="cell-text">5</text>
+        <rect x="215" y="28" width="55" height="40" class="cell-rect accent"></rect><text x="242" y="50" class="cell-text">7</text>
+        <rect x="160" y="68" width="55" height="40" class="cell-rect dim"></rect><text x="187" y="90" class="cell-text">6</text>
+        <rect x="215" y="68" width="55" height="40" class="cell-rect dim"></rect><text x="242" y="90" class="cell-text">8</text>
+
+        <text x="330" y="18" class="lbl strong">dA = dC @ Bᵀ</text>
+        <rect x="330" y="28" width="55" height="40" class="cell-rect"></rect><text x="357" y="50" class="cell-text">11</text>
+        <rect x="385" y="28" width="55" height="40" class="cell-rect"></rect><text x="412" y="50" class="cell-text">15</text>
+        <rect x="330" y="68" width="55" height="40" class="cell-rect"></rect><text x="357" y="90" class="cell-text">11</text>
+        <rect x="385" y="68" width="55" height="40" class="cell-rect"></rect><text x="412" y="90" class="cell-text">15</text>
+
+        <path d="M120,48 Q145,10 330,45" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 2</span>Mesmo mecanismo do forward (FIG. 1), só que multiplicando <code>dC</code> por <code>Bᵀ</code> em vez de <code>A</code> por <code>B</code>. <code>dA[0,0] = 1·5+1·6 = 11</code>.</div>
+  </div>
+
+  <p>
+    Simetricamente, <code>∂L/∂B[k,j] = Σᵢ dC[i,j]·A[i,k] = (Aᵀ @ dC)[k,j]</code>, então <strong><code>dB = Aᵀ @ dC</code></strong> —
+    a transposta fica no <em>outro</em> operando dessa vez.
+  </p>
+
+  <h2><span class="num">§3</span> Exemplo numérico completo</h2>
+  <p><code>A = [[1,2],[3,4]]</code>, <code>B = [[5,6],[7,8]]</code>, <code>dC</code> tudo <code>1</code> (ex: <code>L = sum(C)</code>).</p>
+  <table>
+    <tr><th></th><th>Cálculo</th><th>Resultado</th></tr>
+    <tr><td><code>C = A @ B</code></td><td><code>[[1·5+2·7, 1·6+2·8], [3·5+4·7, 3·6+4·8]]</code></td><td><code>[[19,22],[43,50]]</code></td></tr>
+    <tr><td><code>dA = dC @ Bᵀ</code></td><td><code>[[1,1],[1,1]] @ [[5,7],[6,8]]</code></td><td><code>[[11,15],[11,15]]</code></td></tr>
+    <tr><td><code>dB = Aᵀ @ dC</code></td><td><code>[[1,3],[2,4]] @ [[1,1],[1,1]]</code></td><td><code>[[4,4],[6,6]]</code></td></tr>
+  </table>
+  <p>
+    <strong>Verificação independente:</strong> como <code>dC</code> é tudo <code>1</code>,
+    <code>L = Σᵢⱼₖ A[i,k]·B[k,j]</code>, então <code>∂L/∂A[i,k] = Σⱼ B[k,j]</code> — a soma da linha <code>k</code>
+    de <code>B</code>. Linha 0 de <code>B</code>: <code>5+6=11</code>; linha 1: <code>7+8=15</code>. Bate exatamente
+    com <code>dA</code> acima, coluna por coluna — não é coincidência, é a mesma fórmula derivada de dois jeitos.
+  </p>
+
+  <h2><span class="num">§4</span> Batch matmul: o mesmo cálculo, em paralelo</h2>
+  <p>
+    Tensores 3D <code>(Batch, M, K)</code> × <code>(Batch, K, N)</code>: é literalmente <code>Batch</code> matmuls
+    2D independentes, um por fatia. Cada fatia <code>b</code> usa só seu próprio <code>A[b]</code>, <code>B[b]</code>,
+    <code>dC[b]</code> — nenhuma mistura entre fatias.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 100" width="460">
+        <text x="10" y="18" class="lbl strong">A: shape (2, M, K)</text>
+        <rect x="10" y="28" width="90" height="60" class="cell-rect warm" transform="translate(-8,-8)"></rect>
+        <rect x="10" y="28" width="90" height="60" class="cell-rect warm"></rect><text x="55" y="58" class="cell-text">A[0]</text>
+
+        <text x="160" y="18" class="lbl strong">B: shape (2, K, N)</text>
+        <rect x="160" y="28" width="90" height="60" class="cell-rect accent" transform="translate(-8,-8)"></rect>
+        <rect x="160" y="28" width="90" height="60" class="cell-rect accent"></rect><text x="205" y="58" class="cell-text">B[0]</text>
+
+        <path d="M255,58 L305,58" class="arrow" marker-end="url(#arrowhead)"></path>
+
+        <text x="310" y="18" class="lbl strong">C: shape (2, M, N)</text>
+        <rect x="310" y="28" width="90" height="60" class="cell-rect" transform="translate(-8,-8)"></rect>
+        <rect x="310" y="28" width="90" height="60" class="cell-rect"></rect><text x="355" y="58" class="cell-text">C[0]</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 3</span>As "sombras" atrás de cada matriz representam as outras fatias do batch — mesma forma, dados independentes. É por isso que a Etapa 1 pede um <code>transpose(dim0,dim1)</code> com dimensões explícitas: pra transpor <code>B</code> <em>dentro</em> de cada fatia sem mexer na dimensão de batch (que fica na posição 0).</div>
+  </div>
+
+  <h2><span class="num">§5</span> Um operando compartilhado: o caso <code class="code-inline">(B,M,K) × (K,N)</code></h2>
+  <p>
+    O caso mais comum numa rede: os <strong>mesmos pesos</strong> aplicados a todo exemplo do lote. Repare que
+    <code>W</code> é a única matriz <strong>sem sombra</strong> — existe uma só. No backward isso se paga:
+    <code>dW</code> recebe contribuição de todas as fatias.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 190" width="460">
+        <text x="10" y="18" class="lbl strong">A: shape (2, M, K)</text>
+        <rect x="10" y="28" width="90" height="60" class="cell-rect warm" transform="translate(-8,-8)"></rect>
+        <rect x="10" y="28" width="90" height="60" class="cell-rect warm"></rect><text x="55" y="58" class="cell-text">A[0]</text>
+
+        <text x="160" y="18" class="lbl strong">W: shape (K, N)</text>
+        <rect x="160" y="28" width="90" height="60" class="cell-rect accent"></rect><text x="205" y="58" class="cell-text">W</text>
+        <text x="205" y="104" class="lbl">uma só, sem fatias</text>
+
+        <path d="M255,58 L305,58" class="arrow" marker-end="url(#arrowhead)"></path>
+
+        <text x="310" y="18" class="lbl strong">C: shape (2, M, N)</text>
+        <rect x="310" y="28" width="90" height="60" class="cell-rect" transform="translate(-8,-8)"></rect>
+        <rect x="310" y="28" width="90" height="60" class="cell-rect"></rect><text x="355" y="58" class="cell-text">C[0]</text>
+
+        <path d="M348,112 C 300,152 252,152 214,112" class="arrow" marker-end="url(#arrowhead)"></path>
+        <text x="281" y="136" class="cell-text">dC[0] + dC[1]</text>
+        <text x="230" y="176" class="cell-text">dW[k,n] = Σ_b Σ_m dC[b,m,n]·A[b,m,k]</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 4</span>É o mesmo desbroadcast da §4 do capítulo: quem foi compartilhado no forward soma no backward. <code>dA</code> continua fatia a fatia — cada <code>A[b]</code> só influenciou o seu próprio <code>C[b]</code>. Este é o caso das projeções <code>Q</code>/<code>K</code>/<code>V</code> da Etapa 11 e do <code>Linear</code> da Etapa 8 recebendo um lote de sequências.</div>
+  </div>
+
+  <h2><span class="num">§6</span> Referência rápida</h2>
+  <table>
+    <tr><th>Fórmula</th><th>Intuição</th></tr>
+    <tr><td><code>C = A @ B</code></td><td>Cada célula é um produto escalar linha·coluna</td></tr>
+    <tr><td><code>dA = dC @ Bᵀ</code></td><td>Mesmo matmul, <code>B</code> transposta no lugar de <code>B</code></td></tr>
+    <tr><td><code>dB = Aᵀ @ dC</code></td><td>Mesmo matmul, <code>A</code> transposta como primeiro operando</td></tr>
+    <tr><td>Batch <code>(Batch,M,K)×(Batch,K,N)</code></td><td><code>Batch</code> matmuls 2D independentes, um por fatia</td></tr>
+    <tr><td>Compartilhado <code>(Batch,M,K)×(K,N)</code></td><td>mesmo forward; <code>dW</code> soma sobre o lote</td></tr>
+  </table>
+
+  <footer>mini-gpt — etapa 3 · operações elementares · matmul</footer>
+</div>

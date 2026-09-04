@@ -1,0 +1,202 @@
+<title>Finite Difference — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --warn: #a8841a; --warn-soft: #f3ecb8; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --ok: #7fe0a0; --ok-soft: #123a24; --warn: #ffe98f; --warn-soft: #4a3f13; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --ok: #7fe0a0; --ok-soft: #123a24; --warn: #ffe98f; --warn-soft: #4a3f13; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --warn: #a8841a; --warn-soft: #f3ecb8; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .callout { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 10px 16px; margin: 1.4em 0; font-size: 0.95rem; }
+  .callout .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.35em; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 1.2em 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1.5px solid var(--line-strong); }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .curve { fill: none; stroke: var(--line-strong); stroke-width: 2; }
+  .tangent { fill: none; stroke: var(--accent2); stroke-width: 1.8; stroke-dasharray: 5 4; }
+  .secant { fill: none; stroke: var(--accent); stroke-width: 1.8; }
+  .pt { fill: var(--plate-bg); stroke: var(--ink); stroke-width: 1.5; }
+  .pt.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .box { fill: var(--plate-bg); stroke: var(--line-strong); stroke-width: 1.5; }
+  .box.hot { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Finite Difference</h1>
+    <div class="meta">mini-gpt<br>núcleo de tensores</div>
+    <div class="sub">Folha 01 · Etapa 4 — Gradient Check · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> Secante vs. tangente</h2>
+  <p>
+    A derivada em <code>x</code> é a inclinação da <strong>reta tangente</strong> à curva naquele ponto. A diferença
+    central aproxima essa inclinação pela <strong>reta secante</strong> que passa por <code>(x-ε, f(x-ε))</code> e
+    <code>(x+ε, f(x+ε))</code> — dois pontos vizinhos, um de cada lado. Quanto menor <code>ε</code>, mais a secante
+    "gruda" na tangente.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 240" width="480">
+        <path d="M30,210 Q120,210 180,120 Q240,40 430,20" class="curve"></path>
+
+        <line x1="70" y1="0" x2="70" y2="240" class="arrow" stroke-dasharray="2 3" opacity="0.4"></line>
+        <line x1="220" y1="0" x2="220" y2="240" class="arrow" stroke-dasharray="2 3" opacity="0.4"></line>
+        <line x1="370" y1="0" x2="370" y2="240" class="arrow" stroke-dasharray="2 3" opacity="0.4"></line>
+
+        <line x1="30" y1="145" x2="410" y2="35" class="secant"></line>
+        <line x1="120" y1="145" x2="320" y2="45" class="tangent"></line>
+
+        <circle cx="70" cy="163" r="5" class="pt"></circle>
+        <circle cx="220" cy="95" r="6" class="pt hot"></circle>
+        <circle cx="370" cy="42" r="5" class="pt"></circle>
+
+        <text x="70" y="225" class="lbl strong" text-anchor="middle">x-ε</text>
+        <text x="220" y="225" class="lbl strong" text-anchor="middle">x</text>
+        <text x="370" y="225" class="lbl strong" text-anchor="middle">x+ε</text>
+
+        <text x="415" y="30" class="lbl" fill="var(--accent)">secante (numérico)</text>
+        <text x="325" y="40" class="lbl" fill="var(--accent2)">tangente (analítico)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 1</span>A secante (laranja, ligando <code>x-ε</code> a <code>x+ε</code>) e a tangente em <code>x</code> (verde-água, tracejada) — com <code>ε</code> pequeno, as duas inclinações praticamente coincidem. O erro entre elas é da ordem de <code>ε²</code>, não <code>ε</code> (seção §1 do <code>.md</code>).</div>
+  </div>
+
+  <h2><span class="num">§2</span> Erro relativo: os três limiares</h2>
+  <p>
+    Depois de calcular <code>grad_analítico</code> (via <code>backward()</code>) e <code>grad_numérico</code> (via a
+    secante acima), o erro relativo decide se os dois "batem o suficiente". Três faixas:
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 90" width="480">
+        <rect x="10" y="20" width="150" height="30" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.5"></rect>
+        <text x="85" y="40" class="lbl strong" text-anchor="middle" fill="var(--ok)">&lt; 1e-5 · ok</text>
+
+        <rect x="165" y="20" width="150" height="30" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"></rect>
+        <text x="240" y="40" class="lbl strong" text-anchor="middle" fill="var(--warn)">1e-5 .. 1e-3 · suspeito</text>
+
+        <rect x="320" y="20" width="150" height="30" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.5"></rect>
+        <text x="395" y="40" class="lbl strong" text-anchor="middle" fill="var(--bad)">&gt; 1e-3 · bug</text>
+
+        <text x="10" y="72" class="lbl">erro = |analítico − numérico| / max(|analítico|, |numérico|, 1e-8)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 2</span>O denominador com o piso <code>1e-8</code> existe só pra não dividir por zero quando os dois gradientes já são praticamente nulos.</div>
+  </div>
+
+  <h2><span class="num">§3</span> Fluxo do <code class="code-inline">gradCheck</code></h2>
+  <p>Por elemento <code>i</code> do tensor de entrada, o algoritmo alterna entre perturbar e restaurar antes de seguir pro próximo:</p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 260" width="480">
+        <rect x="10" y="10" width="200" height="36" rx="2" class="box hot"></rect>
+        <text x="110" y="33" class="lbl strong" text-anchor="middle">backward() → grad analítico</text>
+
+        <rect x="10" y="80" width="200" height="36" rx="2" class="box"></rect>
+        <text x="110" y="103" class="lbl strong" text-anchor="middle">p[i] += ε → forward → f₊</text>
+
+        <rect x="10" y="130" width="200" height="36" rx="2" class="box"></rect>
+        <text x="110" y="153" class="lbl strong" text-anchor="middle">p[i] -= 2ε → forward → f₋</text>
+
+        <rect x="10" y="180" width="200" height="36" rx="2" class="box"></rect>
+        <text x="110" y="203" class="lbl strong" text-anchor="middle">p[i] restaurado; (f₊-f₋)/2ε</text>
+
+        <path d="M110,116 L110,130" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M110,166 L110,180" class="arrow" marker-end="url(#arrowhead)"></path>
+
+        <path d="M210,98 Q270,98 270,220 Q270,240 250,240 L110,240" class="arrow" stroke-dasharray="3 3" marker-end="url(#arrowhead)"></path>
+        <text x="272" y="170" class="lbl" transform="rotate(90 272 170)">repete p/ cada i</text>
+
+        <rect x="250" y="10" width="200" height="36" rx="2" class="box hot"></rect>
+        <text x="350" y="33" class="lbl strong" text-anchor="middle">grad numérico[i]</text>
+
+        <path d="M210,198 Q235,198 250,120" class="arrow" marker-end="url(#arrowhead)"></path>
+
+        <rect x="250" y="80" width="200" height="60" rx="2" class="box"></rect>
+        <text x="350" y="103" class="lbl strong" text-anchor="middle">erro relativo por posição</text>
+        <text x="350" y="123" class="lbl" text-anchor="middle">(seção §2)</text>
+
+        <path d="M350,46 L350,80" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M350,140 L350,160" class="arrow" marker-end="url(#arrowhead)"></path>
+
+        <rect x="250" y="165" width="200" height="36" rx="2" class="box hot"></rect>
+        <text x="350" y="188" class="lbl strong" text-anchor="middle">max(erro) reportado</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 3</span><code>p[i]</code> nunca fica perturbado entre uma posição e a próxima — restaurar o valor original antes de avançar é o que garante que cada posição é testada isoladamente.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 4 · gradient check</footer>
+</div>

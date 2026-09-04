@@ -1,0 +1,378 @@
+<title>Exercícios — Etapa 15: Modelo GPT Completo — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Modelo GPT Completo</h1>
+    <div class="meta">mini-gpt<br>de inteiros<br>a logits</div>
+    <div class="sub">Etapa 15 — Modelo GPT · 15 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="15-gpt-model.md">15-gpt-model.md</a> e <a href="gpt.html">gpt.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual o formato da saída do modelo, dada uma entrada <code>[B, T]</code> de inteiros?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[B, T]</code> — um token previsto por posição</button>
+      <button class="option" data-key="b"><code>[B, dModel]</code> — um vetor por exemplo do lote</button>
+      <button class="option" data-key="c"><code>[B, T, vocabSize]</code> — uma pontuação por token do vocabulário, em cada posição</button>
+      <button class="option" data-key="d"><code>[B, vocabSize]</code> — a previsão só da última posição</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A cabeça de linguagem é o único passo que muda o formato. A opção A confunde logits com a decisão: escolher <em>um</em> token é amostragem, e isso é a Etapa 19. A opção D descreve o que a geração usa na prática, mas o forward devolve todas as posições — é o que torna o treino eficiente (§1).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que a <code>Embedding</code> deste projeto entrega?</p>
+    <div class="options">
+      <button class="option" data-key="a">só o vetor do token; a posição entra depois, dentro da atenção</button>
+      <button class="option" data-key="b">a soma do vetor do token com o vetor da posição</button>
+      <button class="option" data-key="c">a concatenação dos dois vetores</button>
+      <button class="option" data-key="d">o vetor do token multiplicado pelo da posição</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Duas tabelas treináveis, indexadas por coisas diferentes, somadas no mesmo vetor. Concatenar (opção C) dobraria <code>dModel</code> e custaria uma projeção para voltar — o mesmo argumento da conexão residual na Etapa 14 §2 (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Com uma sequência de 5 tokens, quantas previsões o modelo produz numa passada?</p>
+    <div class="options">
+      <button class="option" data-key="a">uma — o próximo token depois dos cinco</button>
+      <button class="option" data-key="b">nenhuma; o modelo só prevê depois de treinado</button>
+      <button class="option" data-key="c">quatro — a última posição não tem o que prever</button>
+      <button class="option" data-key="d">cinco — uma por posição</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Cada posição produz uma distribuição sobre o próximo token: a 0 prevê a 1, a 1 prevê a 2, e assim por diante. É a máscara causal que torna isso legítimo — nenhuma dessas previsões enxergou a resposta. A opção C confunde previsão com <em>alvo</em>: a última posição prevê um token que a sequência não contém, e é a Etapa 16 que decide o que fazer com isso (§1).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que é a cabeça de linguagem?</p>
+    <div class="options">
+      <button class="option" data-key="a">uma <code>Linear(dModel, vocabSize)</code> sem viés, que projeta cada posição sobre o vocabulário</button>
+      <button class="option" data-key="b">o softmax que transforma logits em probabilidades</button>
+      <button class="option" data-key="c">o primeiro bloco da pilha, que recebe os embeddings</button>
+      <button class="option" data-key="d">a tabela de embedding lida ao contrário</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> A opção D é quase certa, e vira certa <em>se</em> você amarrar os pesos — mas amarrar é opcional, e a definição da camada não depende disso. O softmax não faz parte do modelo neste projeto: ele aparece dentro da perda, na Etapa 16 (§4 e §5).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Numa <strong>única</strong> camada de atenção causal, sem embedding posicional, você troca a ordem dos dois primeiros tokens de uma sequência de três. O que acontece com a saída da terceira posição?</p>
+    <div class="options">
+      <button class="option" data-key="a">muda pouco, porque a atenção dá pesos diferentes a cada posição</button>
+      <button class="option" data-key="b">muda muito, porque os scores dependem da ordem</button>
+      <button class="option" data-key="c">não muda nada — a diferença medida é <code>0.0</code> exato</button>
+      <button class="option" data-key="d">fica indefinida, porque a máscara causal deixa de valer</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Sem posição, a saída de <code>t</code> depende do <em>conjunto</em> de tokens visíveis, não da ordem deles. Medido no capítulo: os quatro números da saída em <code>t=2</code> são idênticos bit a bit, enquanto em <code>t=0</code> a diferença é <code>4.69</code> — ali o token realmente mudou. Uma camada assim não distingue "o gato comeu o rato" de "o rato comeu o gato". Com <strong>duas</strong> camadas a diferença já aparece — <code>5.1e-2</code> —, porque a assimetria da máscara vira sinal (§2).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que existe um <code>LayerNorm</code> depois do último bloco?</p>
+    <div class="options">
+      <button class="option" data-key="a">para garantir que os logits somem 1</button>
+      <button class="option" data-key="b">porque em pre-LN o fluxo residual atravessa a pilha sem nunca ser renormalizado</button>
+      <button class="option" data-key="c">para desfazer a máscara causal antes da projeção</button>
+      <button class="option" data-key="d">porque a cabeça de linguagem não aceita entrada negativa</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Os <code>LayerNorm</code> de dentro dos blocos normalizam só o que <em>entra</em> em cada subcamada. O fluxo em si acumula <code>2L</code> incrementos: com <code>L = 4</code> a variância chega a 9, ou norma <code>×3</code>. Sem o <code>ln_f</code>, a cabeça receberia um vetor cuja escala depende da profundidade. Quem faz os números somarem 1 é o softmax, e ele nem está no modelo (§4).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">O que <code>contextLength</code> limita, exatamente?</p>
+    <div class="options">
+      <button class="option" data-key="a">o número de linhas da tabela posicional — posições além dela não existem</button>
+      <button class="option" data-key="b">quantos tokens cabem na memória durante o treino</button>
+      <button class="option" data-key="c">o número de blocos que podem ser empilhados</button>
+      <button class="option" data-key="d">nada — é só uma sugestão de tamanho de lote</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> É um teto estrutural, não de desempenho. A tabela tem uma linha por posição, e na posição <code>contextLength</code> não há o que somar. Por isso a <code>Embedding</code> valida <code>T ≤ contextLength</code> em vez de deixar o índice estourar (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Quantos parâmetros os pesos amarrados economizam?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>dModel²</code></button>
+      <button class="option" data-key="b">metade da pilha</button>
+      <button class="option" data-key="c"><code>contextLength · dModel</code></button>
+      <button class="option" data-key="d"><code>vocabSize · dModel</code> — a matriz inteira da cabeça</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> A cabeça deixa de existir como parâmetro próprio. Quanto isso vale depende do vocabulário: 1,0% no modelo tiny, com 65 caracteres, e <strong>23,7%</strong> no GPT-2 small, com 50 mil tokens (§5).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Qual a contagem total de parâmetros do modelo, com pesos amarrados?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>L · (12·dModel² + 11·dModel)</code></button>
+      <button class="option" data-key="b"><code>V·d + C·d + L·(12d² + 11d) + 2d</code></button>
+      <button class="option" data-key="c"><code>V·d + L·(8d² + 5d)</code></button>
+      <button class="option" data-key="d"><code>2 · V · dModel + L · 12·dModel²</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Embedding de token, embedding posicional, a pilha, e os dois vetores do LayerNorm final. A opção A é só a pilha — que no modelo tiny é 96,9% do total, mas no GPT-2 small é 68,3% (§7).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">A máscara causal já revela a cada posição quantos tokens vêm antes dela. Por que isso não substitui o embedding posicional?</p>
+    <div class="options">
+      <button class="option" data-key="a">substitui — o embedding posicional é redundante em modelos causais</button>
+      <button class="option" data-key="b">porque a máscara age depois dos scores, e a posição precisa entrar antes</button>
+      <button class="option" data-key="c">porque a contagem diz <em>quantos</em> tokens são visíveis, não qual está onde</button>
+      <button class="option" data-key="d">porque a máscara é constante, e a tabela posicional é treinável</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É exatamente o que o experimento do §2 isola: os dois casos comparados têm o <em>mesmo</em> tamanho de prefixo, e ainda assim precisariam de saídas diferentes. A opção D não é falsa, mas não é o argumento — mesmo uma tabela fixa resolveria a degenerescência. Vale a ressalva de profundidade: com duas camadas ou mais o modelo <em>consegue</em> deduzir posição da máscara, e a tabela é o que torna a informação direta desde a primeira camada (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O GPT-2 small é conhecido como "124M". Somando as peças sem amarrar os pesos dá 163M. O que explica a diferença?</p>
+    <div class="options">
+      <button class="option" data-key="a">os pesos amarrados: a cabeça de linguagem não é um parâmetro separado</button>
+      <button class="option" data-key="b">os 124M contam só a pilha, sem os embeddings</button>
+      <button class="option" data-key="c">a contagem oficial ignora os vieses</button>
+      <button class="option" data-key="d">o GPT-2 usa <code>float16</code>, então cada parâmetro conta pela metade</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> São <code>50.257 × 768 = 38.597.376</code> parâmetros que deixam de existir. A conta fecha: <code>163.018.752 − 38.597.376 = 124.421.376</code>, e os <code>18.432</code> que faltam para o número oficial são os vieses <code>b_K</code> e <code>b_V</code> que este projeto removeu na Etapa 12 (§5).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Onde o fator <code>1/√(2·nLayers)</code> é aplicado, no GPT-2?</p>
+    <div class="options">
+      <button class="option" data-key="a">no forward, multiplicando a saída de cada bloco</button>
+      <button class="option" data-key="b">na taxa de aprendizado das camadas residuais</button>
+      <button class="option" data-key="c">na inicialização de <code>W_O</code> e da segunda <code>Linear</code> do MLP</button>
+      <button class="option" data-key="d">no gradiente, durante o backward</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É uma escolha de inicialização, não uma operação do forward: as duas matrizes que escrevem no fluxo residual nascem com <code>σ = 0.02/√(2L)</code>. Depois disso o treino faz o que quiser com elas. Isso muda o que é preciso implementar — um argumento a mais em duas camadas, e nenhuma linha no <code>forward</code> (§6).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Com pesos amarrados, o que precisa de cuidado no <code>parameters</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada; a lista pode repetir o tensor sem consequência</button>
+      <button class="option" data-key="b">deduplicar: listado duas vezes, o otimizador atualizaria o mesmo tensor duas vezes por passo</button>
+      <button class="option" data-key="c">listar a transposta separadamente, senão ela não recebe gradiente</button>
+      <button class="option" data-key="d">zerar o gradiente entre os dois usos, para não acumular</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A opção D descreve justamente o que <strong>não</strong> se deve fazer: acumular gradiente de dois usos é o comportamento correto de um tensor compartilhado, como a Etapa 3 §6 estabeleceu. O problema é a lista, não o grafo — e o teste que protege é <code>parameters.toSet.size == parameters.size</code> (§5 e §8).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Você escreve <code>List.fill(nLayers)(bloco)</code> com um único bloco construído antes. O que pega isso?</p>
+    <div class="options">
+      <button class="option" data-key="a">o teste de formato da saída</button>
+      <button class="option" data-key="b">o gradient check nos parâmetros</button>
+      <button class="option" data-key="c">o teste de causalidade</button>
+      <button class="option" data-key="d">a independência entre blocos — os <code>nLayers</code> conjuntos de parâmetros têm que ser distintos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Todos os outros passam. O formato é idêntico, a causalidade também, e o gradient check <em>aprova</em>: um bloco aplicado <code>L</code> vezes é um modelo perfeitamente derivável, com pesos amarrados entre camadas — só que é outra arquitetura, com <code>L</code> vezes menos capacidade. <code>List.fill(n)(x)</code> avalia <code>x</code> uma vez só, e a linha certa (<code>List.fill(n)(TransformerBlock(...))</code>) é quase idêntica (§8).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q15</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Por que o gradient check do modelo inteiro precisa de uma configuração minúscula?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque ele faz dois forwards completos por elemento do tensor conferido</button>
+      <button class="option" data-key="b">porque o erro numérico cresce com o número de camadas</button>
+      <button class="option" data-key="c">porque o <code>Gradcheck</code> só aceita tensores de até 100 elementos</button>
+      <button class="option" data-key="d">porque modelos grandes têm gradiente zero na inicialização</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Diferenças finitas centrais perturbam cada elemento duas vezes, e cada perturbação é um forward do modelo inteiro. Num tensor de 10 mil elementos são 20 mil passadas. A opção B tem um fundo de verdade — mais camadas acumulam erro de arredondamento — mas o que inviabiliza é o custo, não a precisão (§8).</div>
+  </div>
+</div>
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. O caminho de ponta a ponta e o papel do embedding posicional estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 15-gpt-model.md e gpt.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>
+
+<footer style="max-width: 760px; margin: 4em auto 0; padding: 1.2em 24px 0; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;">mini-gpt · theory/15-gpt-model · exercícios</footer>

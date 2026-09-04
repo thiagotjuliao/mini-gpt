@@ -1,0 +1,486 @@
+<title>Exercícios — Etapa 3: Operações Elementares — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .sectionlabel {
+    font-family: "JetBrains Mono", monospace; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-soft); margin: 2.4em 0 0.8em; padding-bottom: 6px; border-bottom: 1px dashed var(--line-strong);
+    display: flex; align-items: baseline; gap: 0.6em;
+  }
+  .sectionlabel .n { color: var(--accent2); }
+  .sectionlabel:first-of-type { margin-top: 0; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Operações Elementares</h1>
+    <div class="meta">mini-gpt<br>ops com gradiente</div>
+    <div class="sub">Etapa 3 — Operações Elementares · 22 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="03-elementary-operations.md">03-elementary-operations.md</a>,
+    <a href="broadcasting.html">broadcasting.html</a> e <a href="matmul.html">matmul.html</a>.
+    Etapa mais densa até aqui — por isso 22 questões em vez de 10, agrupadas pelas mesmas seções do <code>.md</code>.
+    Clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="sectionlabel"><span class="n">§1</span> Element-wise: derivadas locais</div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Para <code>c = a · b</code> (<code>mul</code> element-wise), qual é a derivada local <code>∂c/∂a</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>b</code></button>
+      <button class="option" data-key="b"><code>a</code></button>
+      <button class="option" data-key="c"><code>1</code></button>
+      <button class="option" data-key="d"><code>a · b</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A — <code>b</code>.</strong> Tratando <code>b</code> como constante (derivada local), <code>d/da(a·b) = b</code>. Simetricamente, <code>∂c/∂b = a</code>.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">No backward de <code>div</code> (<code>c = a/b</code>), por que <code>∂c/∂b</code> tem um termo ao quadrado no denominador (<code>-a/b²</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>a/b = a·b⁻¹</code>, e <code>d/db(b⁻¹) = -b⁻²</code>, então <code>d/db(a·b⁻¹) = -a·b⁻² = -a/b²</code></button>
+      <button class="option" data-key="b">é uma correção arbitrária de estabilidade numérica, sem relação direta com a derivada</button>
+      <button class="option" data-key="c">porque toda derivada de razão tem expoente 2 por convenção</button>
+      <button class="option" data-key="d">porque <code>b</code> aparece duas vezes na fórmula do forward</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Não é um detalhe arbitrário — sai direto da regra da potência aplicada a <code>b⁻¹</code>. É por isso que o backward de <code>div</code> tem exatamente esse termo, nem mais nem menos.</div>
+  </div>
+
+  <div class="sectionlabel"><span class="n">§2</span> Funções transcendentais</div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que o backward de <code>exp</code> (<code>c = eᵃ</code>) reusa <code>c.data</code> em vez de recalcular <code>exp(a.data)</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">por eficiência apenas — matematicamente tanto faz usar um ou outro</button>
+      <button class="option" data-key="b"><code>d/dx(eˣ) = eˣ</code> — a derivada é a própria função, e <code>c.data</code> já é exatamente esse valor, calculado no forward</button>
+      <button class="option" data-key="c">porque <code>a.data</code> não está mais disponível no momento do backward</button>
+      <button class="option" data-key="d">porque <code>exp</code> não tem derivada fechada, então se aproxima usando o valor forward</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> É a única operação do projeto até aqui onde a derivada é literalmente igual à própria saída — não uma coincidência de implementação, uma propriedade matemática de <code>eˣ</code>. Usar <code>a.data</code> (a entrada) ali seria o bug documentado no <code>HISTORY.md</code> da Etapa 3.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que, na prática (ex.: softmax na Etapa 6), se evita aplicar <code>log</code> diretamente sobre valores que podem estar perto de zero?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>log(0)</code> não é problema em ponto flutuante, é só mais lento de calcular</button>
+      <button class="option" data-key="b"><code>ln</code> diverge quando o argumento tende a <code>0⁺</code> e não é definido para valores <code>≤0</code> — técnicas como <em>log-sum-exp</em> reorganizam a expressão algebricamente pra nunca precisar computar <code>log</code> de algo minúsculo</button>
+      <button class="option" data-key="c">porque <code>log</code> só é diferenciável para valores negativos</button>
+      <button class="option" data-key="d">porque o gradiente de <code>log</code> é sempre zero perto de zero</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> <code>d/dx(ln x) = 1/x</code> — perto de zero isso explode (e negativo/zero nem é definido). O problema não é só o forward, é a instabilidade numérica generalizada; <em>log-sum-exp</em> é a técnica padrão pra evitar isso.</div>
+  </div>
+
+  <div class="sectionlabel"><span class="n">§3</span> Reduções</div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">No backward de <code>sum(a)</code> (redução escalar), por que <code>a.grad[i] += c.grad</code> é aplicado a <strong>toda</strong> posição <code>i</code>, com o mesmo valor?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque cada elemento de <code>a</code> contribui aditivamente e independentemente pra soma — <code>∂c/∂a[i] = 1</code> pra todo <code>i</code></button>
+      <button class="option" data-key="b">é uma aproximação, não é matematicamente exato</button>
+      <button class="option" data-key="c">porque <code>sum</code> sempre reescala por <code>1/n</code> antes de propagar</button>
+      <button class="option" data-key="d">só vale quando todos os elementos de <code>a</code> são iguais entre si</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> O mesmo escalar <code>c.grad</code> é distribuído (copiado) pra todas as posições, porque a derivada local de cada uma é exatamente <code>1</code> — cada elemento "puxa" a soma igualmente.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">No backward de <code>mean(a)</code>, por que <code>a.grad[i] += c.grad / n</code> (e não só <code>c.grad</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>mean = sum/n</code>, então pela regra da cadeia <code>∂c/∂a[i] = (1/n)·∂sum/∂a[i] = 1/n</code> — cada elemento "deveria" ter contribuído igualmente pra uma mudança de <code>1/n</code> na média</button>
+      <button class="option" data-key="b">porque só metade dos elementos participam do cálculo da média</button>
+      <button class="option" data-key="c">é uma escolha de implementação — usar <code>c.grad</code> puro também funcionaria igualmente bem</button>
+      <button class="option" data-key="d">porque <code>mean</code> tem um termo de regularização embutido na fórmula</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> É consequência direta de <code>mean</code> ser <code>sum</code> escalada por uma constante — a regra da cadeia carrega esse fator <code>1/n</code> pro gradiente também.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext"><code>A = [[1,4,2],[5,0,3]]</code> shape <code>(2,3)</code>. <code>C = sum(A, dim=1)</code> → <code>C = [7, 8]</code>. Se o gradiente vindo de cima é <code>dC = [10, 100]</code>, qual é <code>dA</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[[10,100,10],[100,10,100]]</code></button>
+      <button class="option" data-key="b"><code>[[3.33,3.33,3.33],[33.3,33.3,33.3]]</code></button>
+      <button class="option" data-key="c"><code>[[10,10,10],[100,100,100]]</code></button>
+      <button class="option" data-key="d"><code>[[10,0,0],[100,0,0]]</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Cada elemento da linha <code>i</code> recebe exatamente <code>dC[i]</code> (derivada local <code>1</code>, restrita à própria linha) — a linha 0 inteira recebe <code>10</code>, a linha 1 inteira recebe <code>100</code>. (B seria o resultado se fosse <code>mean</code> em vez de <code>sum</code>.)</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">No backward de <code>max(a)</code>, o gradiente flui:</p>
+    <div class="options">
+      <button class="option" data-key="a">igualmente distribuído entre todos os elementos, como no <code>sum</code></button>
+      <button class="option" data-key="b">só pelo elemento que era o máximo no forward; todos os outros recebem gradiente <code>0</code></button>
+      <button class="option" data-key="c">proporcional ao valor de cada elemento</button>
+      <button class="option" data-key="d">só pelo primeiro elemento do tensor, sempre, independente do valor</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> <code>max</code> é a primeira operação da etapa cuja derivada não é suave: <code>∂max(a)/∂a[i] = 1</code> só se <code>a[i]</code> for o máximo, <code>0</code> caso contrário. É por isso que o backward precisa saber (ou recomputar) qual índice venceu no forward.</div>
+  </div>
+
+  <div class="sectionlabel"><span class="n">§4</span> Broadcasting</div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Em <code>M + v</code> com broadcasting (<code>M</code> shape <code>(3,4)</code>, <code>v</code> shape <code>(4,)</code>), por que <code>v.grad</code> é a <strong>soma</strong> das contribuições de cada linha?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>v</code> foi conceitualmente usado 3 vezes (uma por linha) — a regra da cadeia multivariável (Etapa 2) manda somar a contribuição de cada uso</button>
+      <button class="option" data-key="b">porque broadcasting sempre divide o gradiente por 3 (o número de linhas) no final</button>
+      <button class="option" data-key="c">só soma se as 3 linhas de <code>M</code> tiverem os mesmos valores</button>
+      <button class="option" data-key="d"><code>v.grad</code> é na verdade a média, não a soma, das 3 linhas</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Broadcasting é reuso implícito — o mesmo princípio de "somar contribuições de múltiplos caminhos" da Etapa 2, só que aqui os "caminhos" são as linhas onde <code>v</code> foi conceitualmente repetido.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Um tensor <code>t</code> de shape <code>(1,3)</code> é esticado (<code>broadcastTo</code>) pra shape <code>(2,3)</code>, ganhando strides <code>(0,1)</code>. O que <code>index(1, 2)</code> calcula, e por quê?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>index(1,2) = 1·0 + 2·1 = 2</code> — a mesma posição física que <code>index(0,2)</code>, porque multiplicar por stride <code>0</code> faz a dimensão de linha desaparecer da conta</button>
+      <button class="option" data-key="b"><code>index(1,2) = 1·1 + 2·0 = 1</code> — sempre lê a primeira posição do array</button>
+      <button class="option" data-key="c">estoura erro, porque stride <code>0</code> é inválido em qualquer implementação</button>
+      <button class="option" data-key="d"><code>index(1,2) = 3</code>, uma posição nova alocada especificamente pra "linha 1"</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> É o mesmo mecanismo de view usado em <code>transpose</code> (Etapa 1), levado ao extremo: stride <code>0</code> faz múltiplas combinações de índice caírem na mesma posição física — é a repetição sem duplicação de dado.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext"><code>unbroadcast</code> trata de dois jeitos as dimensões onde soma: as adicionadas por padding de rank, e as que já existiam no shape original com tamanho <code>1</code>. Qual a diferença no resultado final?</p>
+    <div class="options">
+      <button class="option" data-key="a">não há diferença — as duas sempre desaparecem do shape final</button>
+      <button class="option" data-key="b">dimensão adicionada por padding: soma e <strong>remove</strong> (squeeze); dimensão que já existia como <code>1</code>: soma mas <strong>mantém</strong> como <code>1</code></button>
+      <button class="option" data-key="c">dimensão adicionada por padding: mantém como <code>1</code>; dimensão que já existia: soma e remove</button>
+      <button class="option" data-key="d">as duas são somadas mas nunca reduzidas, só multiplicadas por <code>0</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Caso 1 (<code>v</code> shape <code>(4,)</code> somado a <code>M</code> shape <code>(3,4)</code>): a dimensão de linha nunca existiu em <code>v</code>, então some de vez. Caso 2 (<code>b</code> shape <code>(3,1)</code>, um viés por linha): a dimensão de coluna já existia como <code>1</code> — era assim que <code>b</code> foi declarado — então continua existindo depois da soma.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext"><code>M</code> shape <code>(3,4)</code>, <code>b</code> shape <code>(3,1)</code> (viés por linha), <code>C = M + b</code>. O gradiente vindo de cima, <code>dC</code>, é todo <code>1</code>, shape <code>(3,4)</code>. Qual é <code>db</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[[4],[4],[4]]</code> shape <code>(3,1)</code></button>
+      <button class="option" data-key="b"><code>[4,4,4,4]</code> shape <code>(4,)</code></button>
+      <button class="option" data-key="c"><code>[[1],[1],[1]]</code> shape <code>(3,1)</code></button>
+      <button class="option" data-key="d"><code>12</code> (escalar)</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Os ranks já são iguais (2), sem padding. A dimensão de coluna é <code>1</code> em <code>b</code> mas <code>4</code> em <code>dC</code>, então soma ao longo dela com <code>keepdim=true</code>: cada linha de <code>dC</code> tem 4 uns, soma <code>4</code>, resultado mantém shape <code>(3,1)</code> — igual ao <code>b</code> original (Caso 2 da Q11).</div>
+  </div>
+
+  <div class="sectionlabel"><span class="n">§5</span> Transpose e Reshape no backward</div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que o backward de <code>reshape</code>/<code>transpose</code> <strong>não</strong> envolve nenhuma soma, diferente do backward do broadcasting?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>reshape</code>/<code>transpose</code> são operações lineares e broadcasting não é</button>
+      <button class="option" data-key="b">cada posição de saída corresponde a exatamente <strong>uma</strong> posição de entrada (relação 1-para-1) — não é many-to-one como no broadcast, então desfazer é só reindexar</button>
+      <button class="option" data-key="c">na verdade também envolve soma, só que é sempre uma soma de um único termo</button>
+      <button class="option" data-key="d">porque <code>reshape</code>/<code>transpose</code> só operam em tensores 1D</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Diferença chave em relação ao broadcasting: lá, várias posições de saída liam da mesma posição de entrada (many-to-one), exigindo soma no backward pra "desfazer" a repetição. Aqui é sempre bijeção — reindexar basta.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext"><code>A = [[1,4,2],[5,0,3]]</code> shape <code>(2,3)</code>. <code>C = transpose(A)</code> shape <code>(3,2)</code>. O gradiente vindo de cima é <code>dC = [[10,20],[30,40],[50,60]]</code>. Qual é <code>dA</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[[10,30,50],[20,40,60]]</code></button>
+      <button class="option" data-key="b"><code>[[10,20,30],[40,50,60]]</code></button>
+      <button class="option" data-key="c"><code>[[20,40,60],[10,30,50]]</code></button>
+      <button class="option" data-key="d"><code>[[30,10,50],[40,20,60]]</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>dA = transpose(dC)</code> — mesma troca de eixos aplicada ao gradiente. Verificação posição a posição: <code>dA[0,1]</code> deve ser <code>dC[1,0] = 30</code> ✓; <code>dA[1,2]</code> deve ser <code>dC[2,1] = 60</code> ✓. (B é o erro clássico de confundir <code>transpose</code> com <code>reshape</code> no backward — daria a leitura linear errada.)</div>
+  </div>
+
+  <div class="sectionlabel"><span class="n">§6</span> Matrix Multiplication</div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q15</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Para <code>A</code> shape <code>[M,K]</code> e <code>B</code> shape <code>[K,N]</code>, <code>C = A @ B</code>. Dado <code>dC</code>, qual é a fórmula de <code>dA</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>dA = dC @ Bᵀ</code></button>
+      <button class="option" data-key="b"><code>dA = Bᵀ @ dC</code></button>
+      <button class="option" data-key="c"><code>dA = dC @ B</code></button>
+      <button class="option" data-key="d"><code>dA = Aᵀ @ dC</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Sai direto de derivar <code>C[i,j] = Σₖ A[i,k]·B[k,j]</code> em relação a <code>A[i,k]</code>, somando sobre os <code>j</code> que dependem dele: <code>dA[i,k] = Σⱼ dC[i,j]·B[k,j]</code>, que é exatamente a definição de <code>(dC @ Bᵀ)[i,k]</code>.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q16</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">E a fórmula de <code>dB</code> (derivada em relação a <code>B</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>dB = dC @ Bᵀ</code></button>
+      <button class="option" data-key="b"><code>dB = Aᵀ @ dC</code></button>
+      <button class="option" data-key="c"><code>dB = dC @ A</code></button>
+      <button class="option" data-key="d"><code>dB = A @ dC</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Simétrico à derivação de <code>dA</code>: <code>∂L/∂B[k,j] = Σᵢ dC[i,j]·A[i,k] = (Aᵀ @ dC)[k,j]</code>.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q17</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext"><code>A = [[1,2],[3,4]]</code>, <code>B = [[5,6],[7,8]]</code>, <code>dC = [[1,1],[1,1]]</code>. Qual é <code>dA = dC @ Bᵀ</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[[11,15],[11,15]]</code></button>
+      <button class="option" data-key="b"><code>[[13,13],[13,13]]</code></button>
+      <button class="option" data-key="c"><code>[[19,22],[43,50]]</code></button>
+      <button class="option" data-key="d"><code>[[4,4],[6,6]]</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>Bᵀ = [[5,7],[6,8]]</code>. <code>dC @ Bᵀ = [[1·5+1·6, 1·7+1·8],[1·5+1·6, 1·7+1·8]] = [[11,15],[11,15]]</code>. (C é na verdade <code>C = A@B</code>, não <code>dA</code> — cuidado pra não confundir os dois. D é <code>dB</code>, não <code>dA</code>.)</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q18</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Em batch matmul (tensores 3D <code>[Batch, M, K] × [Batch, K, N]</code>), pra obter <code>Bᵀ</code> por fatia chama-se <code>transpose()</code> sem argumentos. Por que o <strong>default</strong> de <code>transpose</code> (últimas duas dimensões) já resolve isso sem tocar na dimensão de batch?</p>
+    <div class="options">
+      <button class="option" data-key="a">a dimensão de batch é a dimensão <code>0</code>, e o default de <code>transpose</code> troca só as duas <strong>últimas</strong> dimensões (<code>rank-2</code>, <code>rank-1</code>) — em um tensor 3D isso é exatamente <code>(K,N)</code>, deixando a dimensão de batch intocada</button>
+      <button class="option" data-key="b">porque <code>transpose</code> sempre ignora a primeira dimensão de qualquer tensor, não importa o rank</button>
+      <button class="option" data-key="c">porque batch matmul na verdade não usa <code>transpose</code>, só <code>reshape</code></button>
+      <button class="option" data-key="d">porque o default troca as duas <strong>primeiras</strong> dimensões, e a dimensão de batch coincidentemente não é afetada nesse caso</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Convenção de <code>CLAUDE.md</code>: <code>transpose(dim0, dim1)</code> tem default <code>dim0 = rank-2, dim1 = rank-1</code> — pensado exatamente pra esse caso. Só quando é preciso trocar dimensões <em>fora</em> das duas últimas (ex.: Multi-Head Attention na Etapa 12, trocando as dimensões 1 e 2) é que se chama <code>transpose</code> com índices explícitos.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q19</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Uma camada multiplica <code>[B, M, K]</code> por <code>[K, N]</code> — o segundo operando <strong>não</strong> tem dimensão de lote. O que isso significa?</p>
+    <div class="options">
+      <button class="option" data-key="a">que só a primeira fatia do lote é multiplicada; as outras passam intactas</button>
+      <button class="option" data-key="b">que o resultado tem formato <code>[M, N]</code>, porque a dimensão de lote se perde no produto</button>
+      <button class="option" data-key="c">que a <strong>mesma</strong> matriz é aplicada a todas as fatias, e a saída é <code>[B, M, N]</code></button>
+      <button class="option" data-key="d">que o formato é inválido — todo <code>matmul</code> exige os dois operandos com o mesmo rank</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É o caso mais comum numa rede: os mesmos pesos aplicados a todo exemplo do lote. O <code>Linear</code> da Etapa 8 recebendo um lote de sequências e as projeções <code>Q</code>/<code>K</code>/<code>V</code> da Etapa 11 são exatamente isso.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q20</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Nesse caso <code>[B, M, K] × [K, N]</code>, o que muda no backward em relação ao caso em que os dois operandos têm lote?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada muda — as duas fórmulas são idênticas</button>
+      <button class="option" data-key="b"><code>dA</code> continua fatia a fatia, mas <code>dW</code> ganha uma soma sobre o lote, porque <code>W</code> foi usada por todas as fatias</button>
+      <button class="option" data-key="c"><code>dW</code> passa a ser a <em>média</em> das contribuições das fatias, pra não crescer com o tamanho do lote</button>
+      <button class="option" data-key="d"><code>dA</code> ganha a soma sobre o lote, e <code>dW</code> é que fica fatia a fatia</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> <code>dW[k,n] = Σ_b Σ_m dC[b,m,n]·A[b,m,k]</code>. É o mesmo desbroadcast da §4: quem foi compartilhado no forward soma no backward. Média (opção C) estaria errada — a regra da cadeia soma caminhos, não os promedia; quem divide por <code>B</code>, se for o caso, é a função de perda.</div>
+  </div>
+
+  <div class="sectionlabel"><span class="n">§7</span> Clamp / Clip</div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q21</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">No backward de <code>clamp(a, min, max)</code>, qual é a derivada local dentro do intervalo (<code>min &lt; a &lt; max</code>) e fora dele (saturado)?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>1</code> dentro, <code>0</code> fora — dentro do intervalo a função é identidade (derivada <code>1</code>); fora, é constante (derivada <code>0</code>)</button>
+      <button class="option" data-key="b">sempre <code>1</code> — <code>clamp</code> não afeta o gradiente</button>
+      <button class="option" data-key="c">sempre <code>0</code> — <code>clamp</code> bloqueia todo gradiente, sempre</button>
+      <button class="option" data-key="d"><code>0</code> dentro, <code>1</code> fora</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Fora do intervalo, o valor de saída não responde mais a mudanças em <code>a</code> — é literalmente uma função constante ali, com derivada zero. Nos pontos exatos <code>a=min</code>/<code>a=max</code> (o "bico"), convenciona-se gradiente zero também.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q22</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext"><code>A = [-3, 2, 7, 5, 0, 4.5]</code>, <code>C = clamp(A, 0, 5)</code>, <code>dC = [1,1,1,1,1,1]</code> (todo 1). Qual é <code>dA</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[0, 1, 0, 0, 0, 1]</code></button>
+      <button class="option" data-key="b"><code>[1, 1, 1, 1, 1, 1]</code></button>
+      <button class="option" data-key="c"><code>[0, 1, 0, 1, 1, 1]</code></button>
+      <button class="option" data-key="d"><code>[1, 0, 1, 1, 1, 0]</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>A[0]=-3</code> saturado abaixo → <code>0</code>. <code>A[1]=2</code> dentro → <code>1</code>. <code>A[2]=7</code> saturado acima → <code>0</code>. <code>A[3]=5</code> exatamente no <code>max</code> (bico, convenção) → <code>0</code>. <code>A[4]=0</code> exatamente no <code>min</code> (bico, convenção) → <code>0</code>. <code>A[5]=4.5</code> dentro → <code>1</code>. (C esquece a convenção do bico nas bordas exatas.)</div>
+  </div>
+
+  <footer>mini-gpt — etapa 3 · operações elementares · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. Derivadas locais, broadcasting e matmul estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de seguir pra Etapa 4.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 03-elementary-operations.md, broadcasting.html e matmul.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

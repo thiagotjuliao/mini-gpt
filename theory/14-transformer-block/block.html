@@ -1,0 +1,368 @@
+<title>Bloco Transformer — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .cell-text.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.hot2 { stroke: var(--accent2); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-soft); margin: 0.6em 0 1.4em; font-family: "JetBrains Mono", monospace; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; vertical-align: -2px; margin-right: 6px; }
+  .swatch.h0 { background: var(--accent2-soft); border-color: var(--accent2); }
+  .swatch.h1 { background: var(--accent-soft); border-color: var(--accent); }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-hot2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+    <marker id="arrowhead-ghost" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"></path></marker>
+  </defs>
+</svg>
+
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Bloco Transformer</h1>
+    <div class="meta">mini-gpt<br>a soma que<br>segura a profundidade</div>
+    <div class="sub">Folha 01 · Etapa 14 — Bloco Transformer · guia visual</div>
+  </div>
+
+  <p>
+    O bloco tem seis operações e um formato só: <code>[B, T, dModel]</code> do começo ao fim.
+    Nas figuras, a linha vertical à esquerda é o <strong>fluxo residual</strong> — o caminho que
+    atravessa o bloco sem passar por nada.
+  </p>
+  <div class="legend">
+    <span><span class="swatch h0"></span>caminho direto — sem Jacobiano nenhum</span>
+    <span><span class="swatch h1"></span>ramo da subcamada</span>
+  </div>
+
+  <h2><span class="num">§1</span> o bloco, em quatro passos</h2>
+  <p>
+    Cada subcamada <strong>lê</strong> uma versão normalizada do fluxo e <strong>escreve</strong> de
+    volta somando. O que desce pela linha da esquerda nunca é substituído — só recebe incrementos.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 620 460" width="620" role="img" aria-label="O bloco transformer pre-LN, com os dois ramos residuais">
+        <rect class="cell hot2" x="40" y="16" width="140" height="34"></rect>
+        <text class="cell-text hot2" x="110" y="33">X  [B,T,dModel]</text>
+
+        <line class="arrow hot2" x1="110" y1="52" x2="110" y2="196" marker-end="url(#arrowhead-hot2)"></line>
+        <circle cx="110" cy="88" r="3.5" fill="var(--accent2)"></circle>
+        <line class="arrow" x1="113" y1="88" x2="246" y2="88" marker-end="url(#arrowhead)"></line>
+
+        <rect class="cell" x="250" y="70" width="220" height="36"></rect>
+        <text class="cell-text" x="360" y="88">LayerNorm₁</text>
+        <line class="arrow" x1="360" y1="108" x2="360" y2="128" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot" x="250" y="130" width="220" height="44"></rect>
+        <text class="cell-text hot" x="360" y="146">MultiHeadAttention</text>
+        <text class="cell-text soft" x="360" y="164">mistura posições · S₁</text>
+        <path class="arrow" d="M360 176 L 360 206 L 128 206" marker-end="url(#arrowhead)"></path>
+
+        <circle cx="110" cy="206" r="13" fill="var(--plate-bg)" stroke="var(--accent2)" stroke-width="1.8"></circle>
+        <text class="cell-text hot2" x="110" y="207">+</text>
+        <text class="lbl hot2" x="8" y="232">H = X + S₁</text>
+
+        <line class="arrow hot2" x1="110" y1="219" x2="110" y2="356" marker-end="url(#arrowhead-hot2)"></line>
+        <circle cx="110" cy="250" r="3.5" fill="var(--accent2)"></circle>
+        <line class="arrow" x1="113" y1="250" x2="246" y2="250" marker-end="url(#arrowhead)"></line>
+
+        <rect class="cell" x="250" y="232" width="220" height="36"></rect>
+        <text class="cell-text" x="360" y="250">LayerNorm₂</text>
+        <line class="arrow" x1="360" y1="270" x2="360" y2="290" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot" x="250" y="292" width="220" height="44"></rect>
+        <text class="cell-text hot" x="360" y="308">MLP</text>
+        <text class="cell-text soft" x="360" y="326">cada posição sozinha · S₂</text>
+        <path class="arrow" d="M360 338 L 360 366 L 128 366" marker-end="url(#arrowhead)"></path>
+
+        <circle cx="110" cy="366" r="13" fill="var(--plate-bg)" stroke="var(--accent2)" stroke-width="1.8"></circle>
+        <text class="cell-text hot2" x="110" y="367">+</text>
+
+        <line class="arrow hot2" x1="110" y1="379" x2="110" y2="398" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell hot2" x="40" y="400" width="140" height="34"></rect>
+        <text class="cell-text hot2" x="110" y="417">Y  [B,T,dModel]</text>
+
+        <text class="lbl hot2" x="500" y="150">o ramo lê</text>
+        <text class="lbl hot2" x="500" y="166">normalizado</text>
+        <text class="lbl hot2" x="500" y="312">e escreve</text>
+        <text class="lbl hot2" x="500" y="328">somando</text>
+        <text class="lbl" x="8" y="452">mesmo formato em todos os seis passos — é o que permite empilhar</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 1</span>
+      O bloco pre-LN. Catorze tensores de parâmetro — 2 em cada <code>LayerNorm</code>, 6 na atenção,
+      4 no MLP. As duas somas não têm nenhum.
+    </div>
+  </div>
+
+  <h2><span class="num">§3</span> o backward na bifurcação</h2>
+  <p>
+    A soma repassa o gradiente <strong>inteiro</strong> para os dois lados. Na volta, a bifurcação
+    do forward vira uma soma: o que veio pelo caminho direto mais o que veio pelo ramo. Os números
+    são os do exemplo do §3, com <code>f(x) = x·W</code>.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 620 300" width="620" role="img" aria-label="O gradiente subindo pelo bloco e se somando na bifurcação">
+        <rect class="cell" x="40" y="246" width="150" height="34"></rect>
+        <text class="cell-text" x="115" y="263">dY = [1, 10]</text>
+
+        <line class="arrow hot2" x1="115" y1="244" x2="115" y2="120" marker-end="url(#arrowhead-hot2)"></line>
+        <text class="lbl hot2" x="18" y="190">dY intacto</text>
+        <text class="lbl hot2" x="18" y="206">caminho direto</text>
+
+        <circle cx="115" cy="228" r="3.5" fill="var(--accent2)"></circle>
+        <line class="arrow hot" x1="118" y1="228" x2="286" y2="228" marker-end="url(#arrowhead-hot)"></line>
+
+        <rect class="cell hot" x="290" y="210" width="230" height="36"></rect>
+        <text class="cell-text hot" x="405" y="228">· ∂f/∂X = · Wᵀ</text>
+        <rect class="cell" x="290" y="152" width="230" height="34"></rect>
+        <text class="cell-text soft" x="405" y="169">dY·Wᵀ = [-1.5, 3.1]</text>
+        <line class="arrow hot" x1="405" y1="208" x2="405" y2="190" marker-end="url(#arrowhead-hot)"></line>
+        <path class="arrow hot" d="M405 150 L 405 120 L 133 120" marker-end="url(#arrowhead-hot)"></path>
+
+        <circle cx="115" cy="120" r="13" fill="var(--plate-bg)" stroke="var(--accent2)" stroke-width="1.8"></circle>
+        <text class="cell-text hot2" x="115" y="121">+</text>
+
+        <line class="arrow hot2" x1="115" y1="107" x2="115" y2="76" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell hot2" x="30" y="42" width="170" height="34"></rect>
+        <text class="cell-text hot2" x="115" y="59">dX = [-0.5, 13.1]</text>
+
+        <text class="lbl" x="230" y="60">sem a soma residual, dX seria [-1.5, 3.1]</text>
+        <text class="lbl" x="230" y="78">— o sinal da coordenada 0 chega a inverter</text>
+        <text class="lbl hot" x="540" y="228">este</text>
+        <text class="lbl hot" x="540" y="244">encolhe</text>
+        <text class="lbl hot2" x="540" y="120">este não</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 2</span>
+      <code>dX = dY + dY·∂f/∂X</code>. O termo da esquerda não é multiplicado por Jacobiano nenhum:
+      seja o que for que aconteça dentro da subcamada, uma cópia intacta de <code>dY</code> chega
+      ao início. Conferido por diferenças finitas no capítulo.
+    </div>
+  </div>
+
+  <h2><span class="num">§3</span> o que acontece com 24 camadas</h2>
+  <p>
+    Mediana de <code>|gradiente|</code> em 4 mil sorteios por profundidade, com
+    <code>f' ~ N(0, 0.25²)</code>. A escala vertical é logarítmica: cada marca é um fator de
+    <strong>10 bilhões</strong>.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 420 250" width="420" role="img" aria-label="Queda do gradiente com a profundidade, com e sem conexão residual">
+        <g transform="translate(78,18)">
+          <line class="arrow ghost" x1="0" y1="8" x2="300" y2="8"></line>
+          <line class="arrow ghost" x1="0" y1="88" x2="300" y2="88"></line>
+          <line class="arrow ghost" x1="0" y1="168" x2="300" y2="168"></line>
+          <text class="lbl" x="-70" y="11">10⁰</text>
+          <text class="lbl" x="-70" y="91">10⁻¹⁰</text>
+          <text class="lbl" x="-70" y="171">10⁻²⁰</text>
+          <line class="arrow ghost" x1="0" y1="0" x2="0" y2="196"></line>
+
+          <polyline class="arrow" fill="none" stroke="var(--accent)" stroke-width="1.8"
+            points="0.0,8.0 25.0,21.2 50.0,35.2 75.0,49.4 100.0,63.1 125.0,77.4 150.0,90.8 175.0,105.4 200.0,119.8 225.0,133.2 250.0,147.1 275.0,161.5 300.0,175.2"></polyline>
+          <polyline class="arrow" fill="none" stroke="var(--accent2)" stroke-width="2.2"
+            points="0.0,8.0 25.0,8.1 50.0,8.3 75.0,8.6 100.0,8.8 125.0,9.0 150.0,9.3 175.0,9.4 200.0,9.7 225.0,10.0 250.0,10.4 275.0,10.5 300.0,10.6"></polyline>
+
+          <text class="lbl hot" x="150" y="112">sem residual</text>
+          <text class="lbl hot2" x="150" y="26">com residual</text>
+          <text class="lbl" x="0" y="212">0</text>
+          <text class="lbl" x="140" y="212">12 camadas</text>
+          <text class="lbl" x="272" y="212">24</text>
+        </g>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 3</span>
+      A curva laranja é uma reta em escala logarítmica, que é o significado de "encolhe
+      exponencialmente". Em 24 camadas ela chega a <code>10⁻²⁰·⁹</code>. A curva azul cai de
+      <code>1</code> para <code>0.47</code> no mesmo trajeto.
+    </div>
+  </div>
+
+  <h2><span class="num">§4</span> pre-LN e post-LN</h2>
+  <p>
+    A diferença é onde a normalização fica em relação à soma. Em pre-LN o caminho direto é
+    <code>X</code> puro. Em post-LN ele atravessa um <code>LayerNorm</code> — e o Jacobiano desse
+    <code>LN</code> entra no produto de todas as camadas.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 268" width="700" role="img" aria-label="Comparação entre pre-LN e post-LN">
+        <text class="lbl strong hot2" x="20" y="20">PRE-LN — o caminho direto fica intocado</text>
+        <rect class="cell hot2" x="20" y="34" width="44" height="30"></rect>
+        <text class="cell-text hot2" x="42" y="50">X</text>
+        <line class="arrow hot2" x1="64" y1="49" x2="236" y2="49" marker-end="url(#arrowhead-hot2)"></line>
+        <circle cx="252" cy="49" r="12" fill="var(--plate-bg)" stroke="var(--accent2)" stroke-width="1.8"></circle>
+        <text class="cell-text hot2" x="252" y="50">+</text>
+        <path class="arrow" d="M42 66 L 42 92 L 88 92" marker-end="url(#arrowhead)"></path>
+        <rect class="cell" x="90" y="76" width="60" height="32"></rect>
+        <text class="cell-text soft" x="120" y="92">LN</text>
+        <line class="arrow" x1="152" y1="92" x2="168" y2="92" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot" x="170" y="76" width="60" height="32"></rect>
+        <text class="cell-text hot" x="200" y="92">Sub</text>
+        <path class="arrow" d="M232 92 L 252 92 L 252 63" marker-end="url(#arrowhead)"></path>
+        <line class="arrow hot2" x1="266" y1="49" x2="300" y2="49" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell hot2" x="302" y="34" width="44" height="30"></rect>
+        <text class="cell-text hot2" x="324" y="50">Y</text>
+        <text class="lbl hot2" x="366" y="46">nenhum Jacobiano</text>
+        <text class="lbl hot2" x="366" y="62">entre X e Y</text>
+
+        <text class="lbl strong hot" x="20" y="140">POST-LN — todo caminho paga pedágio</text>
+        <rect class="cell" x="20" y="154" width="44" height="30"></rect>
+        <text class="cell-text" x="42" y="170">X</text>
+        <line class="arrow ghost" x1="64" y1="169" x2="236" y2="169" marker-end="url(#arrowhead-ghost)"></line>
+        <circle cx="252" cy="169" r="12" fill="var(--plate-bg)" stroke="var(--line-strong)" stroke-width="1.8"></circle>
+        <text class="cell-text soft" x="252" y="170">+</text>
+        <path class="arrow" d="M42 186 L 42 212 L 168 212" marker-end="url(#arrowhead)"></path>
+        <rect class="cell hot" x="170" y="196" width="60" height="32"></rect>
+        <text class="cell-text hot" x="200" y="212">Sub</text>
+        <path class="arrow" d="M232 212 L 252 212 L 252 183" marker-end="url(#arrowhead)"></path>
+        <line class="arrow" x1="266" y1="169" x2="290" y2="169" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot" x="292" y="153" width="60" height="32"></rect>
+        <text class="cell-text hot" x="322" y="169">LN</text>
+        <line class="arrow" x1="354" y1="169" x2="378" y2="169" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="380" y="154" width="44" height="30"></rect>
+        <text class="cell-text" x="402" y="170">Y</text>
+        <text class="lbl hot" x="444" y="166">a escala de X</text>
+        <text class="lbl hot" x="444" y="182">é descartada aqui</text>
+
+        <text class="lbl" x="20" y="244">desvio padrão depois de 3 blocos, começando de [2,3,6,9]:</text>
+        <text class="lbl hot2" x="20" y="262">pre-LN 2.74 → 3.04   ·   post-LN 2.74 → 1.00 exato</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 4</span>
+      Em post-LN, o <code>1.0000</code> não é aproximado: a última operação do bloco é normalizar,
+      então a saída tem desvio padrão exatamente 1, e o bloco seguinte não sabe quão grande era o
+      sinal que chegou.
+    </div>
+  </div>
+
+  <h2><span class="num">§5</span> o barramento residual</h2>
+  <p>
+    Com <code>L</code> blocos há <code>2L</code> dispositivos pendurados no mesmo barramento. Cada um
+    lê normalizado e escreve somando, e as variâncias dos incrementos se acumulam.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 620 260" width="620" role="img" aria-label="O fluxo residual como um barramento com subcamadas lendo e escrevendo">
+        <line x1="40" y1="120" x2="560" y2="120" stroke="var(--accent2)" stroke-width="6" opacity="0.55"></line>
+        <text class="lbl hot2" x="40" y="108">fluxo residual — [B, T, dModel], nunca substituído</text>
+
+        <g>
+          <rect class="cell" x="70" y="40" width="76" height="34"></rect>
+          <text class="cell-text soft" x="108" y="57">MHA 1</text>
+          <path class="arrow ghost" d="M88 120 L 88 76" marker-end="url(#arrowhead-ghost)"></path>
+          <path class="arrow hot" d="M128 76 L 128 116" marker-end="url(#arrowhead-hot)"></path>
+        </g>
+        <g>
+          <rect class="cell" x="180" y="152" width="76" height="34"></rect>
+          <text class="cell-text soft" x="218" y="169">MLP 1</text>
+          <path class="arrow ghost" d="M198 124 L 198 150" marker-end="url(#arrowhead-ghost)"></path>
+          <path class="arrow hot" d="M238 150 L 238 124" marker-end="url(#arrowhead-hot)"></path>
+        </g>
+        <g>
+          <rect class="cell" x="290" y="40" width="76" height="34"></rect>
+          <text class="cell-text soft" x="328" y="57">MHA 2</text>
+          <path class="arrow ghost" d="M308 120 L 308 76" marker-end="url(#arrowhead-ghost)"></path>
+          <path class="arrow hot" d="M348 76 L 348 116" marker-end="url(#arrowhead-hot)"></path>
+        </g>
+        <g>
+          <rect class="cell" x="400" y="152" width="76" height="34"></rect>
+          <text class="cell-text soft" x="438" y="169">MLP 2</text>
+          <path class="arrow ghost" d="M418 124 L 418 150" marker-end="url(#arrowhead-ghost)"></path>
+          <path class="arrow hot" d="M458 150 L 458 124" marker-end="url(#arrowhead-hot)"></path>
+        </g>
+        <text class="lbl" x="500" y="128">... 2L no total</text>
+
+        <text class="lbl ghost" x="40" y="200">cinza: lê (normalizado)</text>
+        <text class="lbl hot" x="200" y="200">laranja: escreve (soma)</text>
+
+        <text class="lbl strong" x="40" y="232">Var da saída:   sem escala  1 + 2L   →  25 com L = 12</text>
+        <text class="lbl strong hot2" x="40" y="250">com 1/√(2L):   1 + 2L·(1/2L) = 2   →  para qualquer profundidade</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 5</span>
+      As setas cinza leem, as laranjas escrevem. Como o que soma é a <strong>variância</strong>, e
+      não o desvio padrão, o fator que estabiliza a soma é <code>1/√(2L)</code> — multiplicar por
+      ele divide a variância de cada incremento por <code>2L</code>.
+    </div>
+  </div>
+
+  <footer>mini-gpt · theory/14-transformer-block · guia visual</footer>
+</div>

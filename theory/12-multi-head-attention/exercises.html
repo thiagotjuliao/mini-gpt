@@ -1,0 +1,367 @@
+<title>Exercícios — Etapa 12: Multi-Head Attention — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Multi-Head Attention</h1>
+    <div class="meta">mini-gpt<br>várias cabeças<br>pelo preço de uma</div>
+    <div class="sub">Etapa 12 — Multi-Head Attention · 14 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="12-multi-head-attention.md">12-multi-head-attention.md</a> e <a href="heads.html">heads.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual é a limitação estrutural de uma cabeça de atenção só?</p>
+    <div class="options">
+      <button class="option" data-key="a">ela só consegue olhar para os tokens vizinhos, e perde relações longas</button>
+      <button class="option" data-key="b">ela tem poucos parâmetros para representar relações complexas</button>
+      <button class="option" data-key="c">todas as coordenadas de uma posição compartilham a mesma linha de pesos <code>p</code></button>
+      <button class="option" data-key="d">ela não consegue atribuir peso zero a uma posição</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Na fórmula <code>y_i = Σⱼ p_ij · v_j</code>, o peso <code>p_ij</code> não tem índice de coordenada. Ele multiplica o vetor <code>v_j</code> inteiro. Se a coordenada 0 precisa vir de um token e a coordenada 1 de outro, a cabeça tem que negociar um meio-termo. A opção A é falsa — a atenção alcança qualquer distância, e é justamente o motivo dela existir (§1).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Com <code>dModel = 512</code> e <code>H = 8</code>, quanto vale <code>dHead</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">512 — cada cabeça enxerga o vetor inteiro</button>
+      <button class="option" data-key="b">64 — o orçamento é repartido entre as cabeças</button>
+      <button class="option" data-key="c">4096 — cada cabeça recebe <code>dModel × H</code></button>
+      <button class="option" data-key="d">depende da inicialização dos pesos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> <code>dHead = dModel / H = 512 / 8 = 64</code>. É por isso que <code>dModel</code> precisa ser divisível por <code>H</code> — não existe fatia com um número quebrado de coordenadas (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Quantos pesos a mais custa usar 12 cabeças em vez de 1, com <code>dModel</code> fixo?</p>
+    <div class="options">
+      <button class="option" data-key="a">12 vezes mais</button>
+      <button class="option" data-key="b">12 vezes mais nas projeções, mas o mesmo em <code>W_O</code></button>
+      <button class="option" data-key="c">um pouco mais, por causa dos vieses extras de cada cabeça</button>
+      <button class="option" data-key="d">nenhum — <code>H · dHead = dModel</code>, então a conta é idêntica</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Juntar 12 projeções <code>[768, 64]</code> dá 589.824 pesos, exatamente o mesmo que uma matriz <code>[768, 768]</code>. Multi-head não é uma atenção cara: é a mesma conta, reorganizada em subespaços. O ganho vem de ter <code>H</code> distribuições em vez de uma (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual o formato da máscara causal num bloco multi-head?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[T, T]</code> — a mesma de sempre, replicada por broadcast sobre <code>B</code> e <code>H</code></button>
+      <button class="option" data-key="b"><code>[H, T, T]</code> — uma máscara por cabeça</button>
+      <button class="option" data-key="c"><code>[B, H, T, T]</code> — uma máscara por exemplo e por cabeça</button>
+      <button class="option" data-key="d"><code>[T, dHead]</code> — ela agora age no subespaço</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Causalidade é propriedade da sequência, não da cabeça: nenhuma posição pode ver o futuro, em nenhum subespaço. O broadcasting da Etapa 3 §4 alinha os formatos pela direita e replica a mesma matriz sobre os dois eixos de lote (§4).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Qual a sequência correta para sair de <code>[B, T, dModel]</code> e chegar em <code>[B, H, T, dHead]</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>transpose(1, 2)</code> e depois <code>reshape</code></button>
+      <button class="option" data-key="b"><code>reshape</code> para <code>[B, T, H, dHead]</code> e depois <code>transpose(1, 2)</code></button>
+      <button class="option" data-key="c">um <code>reshape</code> direto — os dois formatos têm o mesmo número de elementos</button>
+      <button class="option" data-key="d"><code>reshape</code> para <code>[B, H, dHead, T]</code> e depois <code>transpose()</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O <code>reshape</code> corta a última dimensão em <code>H</code> blocos contíguos, e o <code>transpose</code> agrupa os blocos por cabeça. A opção C é a armadilha: ela é <em>aceita</em> pelo <code>reshape</code>, porque a contagem de elementos bate, e produz lixo (§3, FIG 1 e FIG 2).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Com <code>T = 3</code>, <code>dModel = 4</code>, <code>H = 2</code> e o rótulo <code>10t + d</code> em cada célula, um <code>reshape</code> direto de <code>[T, dModel]</code> para <code>[H, T, dHead]</code> dá <code>h=0 → [[0,1], [2,3], [10,11]]</code>. O que aconteceu?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada de errado — essa é a divisão correta em cabeças</button>
+      <button class="option" data-key="b">as cabeças ficaram certas, mas os tokens saíram fora de ordem</button>
+      <button class="option" data-key="c">o "token 1" da cabeça 0 é na verdade o token 0 nas coordenadas 2 e 3</button>
+      <button class="option" data-key="d">o <code>reshape</code> perdeu elementos, porque <code>4 ≠ 2 × 2</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> O <code>reshape</code> percorre a memória em ordem canônica, com <code>dModel</code> variando mais rápido que <code>T</code>. Sem o <code>transpose</code>, ele pega os 6 primeiros números do array e chama isso de "cabeça 0": metade do token 0, metade do token 1, e nada do token 2. Nenhum elemento se perdeu — todos os 12 estão lá, no lugar errado (§3, FIG 2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">O que o modelo perde se você remover <code>W_O</code> e usar a concatenação direto como saída?</p>
+    <div class="options">
+      <button class="option" data-key="a">as cabeças nunca se misturam — cada coordenada da saída vem de uma cabeça só, para sempre</button>
+      <button class="option" data-key="b">a saída deixa de ter formato <code>[B, T, dModel]</code></button>
+      <button class="option" data-key="c">os pesos de atenção deixam de somar 1</button>
+      <button class="option" data-key="d">nada — <code>W_O</code> existe só para o bloco poder ser empilhado</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> A opção B está errada: a concatenação já tem formato <code>[B, T, dModel]</code>, então empilhar continuaria possível. O problema é outro — sem <code>W_O</code>, as <code>H</code> atenções seriam <code>H</code> modelos independentes rodando lado a lado, e o que a cabeça 1 descobriu nunca chegaria às coordenadas da cabeça 0 (§6, FIG 4).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Dos dois <code>reshape</code> do bloco — o da divisão e o da concatenação — qual copia o tensor, e por quê?</p>
+    <div class="options">
+      <button class="option" data-key="a">os dois copiam, porque <code>reshape</code> sempre chama <code>contiguous</code></button>
+      <button class="option" data-key="b">nenhum dos dois — <code>reshape</code> é sempre uma view</button>
+      <button class="option" data-key="c">o da divisão, porque ele quebra a última dimensão em blocos</button>
+      <button class="option" data-key="d">o da concatenação, porque ele recebe um tensor recém-transposto, com strides não canônicas</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> <code>reshape</code> chama <code>contiguous</code>, mas <code>contiguous</code> só copia quando as strides não são as canônicas. Na ida o tensor vem de um <code>matmul</code>, já em ordem canônica — a cópia não acontece. Na volta ele chega de um <code>transpose</code>, que é uma view com strides trocadas. É a única cópia obrigatória do bloco (§5, FIG 3).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Os scores têm formato <code>[B, H, T, T]</code>. Em qual dimensão o softmax é aplicado?</p>
+    <div class="options">
+      <button class="option" data-key="a">dimensão 1, a das cabeças — para que os pesos somem 1 entre cabeças</button>
+      <button class="option" data-key="b">dimensão 2, a primeira <code>T</code></button>
+      <button class="option" data-key="c">dimensão 3, a última — cada linha da matriz de scores vira uma distribuição</button>
+      <button class="option" data-key="d">nas duas dimensões <code>T</code> ao mesmo tempo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> O eixo normalizado é sempre o das posições <em>olhadas</em>, que é o último. A dimensão 2 indexa a posição que olha; a 3, a posição observada. A opção A inverteria o sentido do mecanismo: as cabeças são independentes, e cada uma precisa da sua própria distribuição completa (§4).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que o viés de <code>W_K</code> tem gradiente exatamente zero, sempre?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque ele é inicializado com zeros, e o gradiente de um parâmetro nulo é nulo</button>
+      <button class="option" data-key="b">porque ele desloca a linha inteira de scores pelo mesmo valor, e o softmax é invariante a isso</button>
+      <button class="option" data-key="c">porque a máscara causal zera o gradiente antes que ele chegue nas keys</button>
+      <button class="option" data-key="d">porque <code>K</code> aparece transposta no <code>matmul</code>, e o backward da transposta anula o viés</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O termo extra no score é <code>q_i · b_K</code>, que não depende de <code>j</code>. Somar a mesma constante a toda a linha não muda o softmax — verificado no capítulo somando 5 a todas as keys, com <code>P</code> idêntico até o décimo dígito. A opção A confunde valor com gradiente: <code>b_Q</code> também nasce zerado, e aprende normalmente (§8).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O viés de <code>W_V</code> tem gradiente diferente de zero. Por que ele mesmo assim é dispensável num bloco multi-head?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque as linhas de <code>P</code> somam 1, então ele atravessa a atenção como constante e vai parar no mesmo lugar que <code>b_O</code></button>
+      <button class="option" data-key="b">porque a máscara causal cancela a contribuição dele nas posições bloqueadas</button>
+      <button class="option" data-key="c">porque <code>W_O</code> é inicializado de um jeito que anula qualquer constante</button>
+      <button class="option" data-key="d">porque o gradiente dele é pequeno o bastante para ser desprezado na prática</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>P·(V + 1·b_V) = P·V + b_V</code>, porque cada linha de <code>P</code> soma 1. Essa constante passa por <code>W_O</code> e aterrissa exatamente onde <code>b_O</code> já está: a saída depende de <code>b_V</code> só através de <code>c·W_O + b_O</code>. São dois parâmetros para uma coisa só — redundância exata, não aproximação. A opção D é o tipo de raciocínio que este projeto evita: o argumento é algébrico, não numérico (§8).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">No backward, o gradiente <code>dC</code> volta às cabeças sem nenhuma soma, mas <code>dX</code> recebe três contribuições. Por quê?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>dX</code> precisa ser normalizado pelas três projeções</button>
+      <button class="option" data-key="b">porque o <code>transpose</code> duplica o gradiente ao desfazer a troca de eixos</button>
+      <button class="option" data-key="c">porque <code>C</code> é contígua e <code>X</code> não é</button>
+      <button class="option" data-key="d">porque a divisão em cabeças é uma bijeção, enquanto <code>X</code> é usada três vezes no forward</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> A regra da cadeia soma sobre todos os usos de uma variável. Cada elemento de <code>C</code> veio de exatamente um elemento de uma cabeça, então o gradiente volta um para um. Já <code>X</code> alimenta <code>W_Q</code>, <code>W_K</code> e <code>W_V</code> — três arestas saindo do mesmo nó, três contribuições. É o acúmulo que a Etapa 2 resolveu com um <code>Gradient</code> que só soma (§7).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O gradient check reprova um parâmetro com erro relativo <code>1.1e-3</code>, mas o forward está claramente correto. Qual a primeira coisa a medir?</p>
+    <div class="options">
+      <button class="option" data-key="a">o formato do parâmetro, que provavelmente está transposto</button>
+      <button class="option" data-key="b">o tamanho do passo <code>ε</code> das diferenças finitas, que deve estar grande demais</button>
+      <button class="option" data-key="c">a magnitude absoluta do gradiente analítico — se for zero de verdade, a métrica relativa mente</button>
+      <button class="option" data-key="d">se o <code>noGrad</code> não ficou ligado por engano durante o check</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A métrica do <code>Gradcheck</code> é relativa, com piso <code>1e-8</code> no denominador. Com gradiente analítico em <code>1e-16</code> e ruído numérico em <code>1e-11</code>, a divisão dá <code>~1e-3</code> — e o veredito manda procurar bug onde não há nenhum. Aconteceu neste projeto com o viés de <code>W_K</code>, reprovando em 8 de 10 execuções. O teste certo nesse caso é <code>grad == 0</code> com tolerância absoluta (§8).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Você divide em cabeças corretamente, roda a atenção, e concatena esquecendo o <code>transpose</code> de volta — só o <code>reshape</code>. Todos os formatos batem, o forward roda e <strong>o gradient check passa</strong>. Qual teste pega isso?</p>
+    <div class="options">
+      <button class="option" data-key="a">nenhum teste automático pega — só inspeção visual dos pesos de atenção</button>
+      <button class="option" data-key="b">dividir e concatenar sem atenção no meio, exigindo igualdade exata com a entrada</button>
+      <button class="option" data-key="c">conferir que as linhas de <code>P</code> somam 1</button>
+      <button class="option" data-key="d">um gradient check com <code>ε</code> menor</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O gradient check é cego aqui, e vale entender por quê: ele confere se o backward é a derivada correta <em>do forward que você escreveu</em>. Um forward que embaralha coordenadas continua sendo uma função perfeitamente derivável, e o check aprova. A opção C também passa — o softmax roda antes do embaralhamento, e as linhas continuam somando 1. O teste de ida e volta é estrutural: se dividir e concatenar não devolve a entrada intacta, a ordem das operações está errada, e ele custa duas linhas (§5 e §9).</div>
+  </div>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A ordem entre reshape e transpose e o argumento dos vieses mortos estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 12-multi-head-attention.md e heads.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>
+
+<footer style="max-width: 760px; margin: 4em auto 0; padding: 1.2em 24px 0; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;">mini-gpt · theory/12-multi-head-attention · exercícios</footer>

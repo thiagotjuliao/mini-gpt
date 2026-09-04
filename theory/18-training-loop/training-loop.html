@@ -1,0 +1,358 @@
+<title>O loop de treinamento — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .cell-text.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.hot2 { stroke: var(--accent2); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  .axis { stroke: var(--line-strong); stroke-width: 1.2; }
+  .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-soft); margin: 0.6em 0 1.4em; font-family: "JetBrains Mono", monospace; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; vertical-align: -2px; margin-right: 6px; }
+  .swatch.h0 { background: var(--accent2-soft); border-color: var(--accent2); }
+  .swatch.h1 { background: var(--accent-soft); border-color: var(--accent); }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-hot2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>O loop de treinamento</h1>
+    <div class="meta">mini-gpt<br>onde as dezessete<br>etapas se encontram</div>
+    <div class="sub">Folha 01 · Etapa 18 — Loop de treinamento · guia visual</div>
+  </div>
+
+  <p>
+    Esta etapa não acrescenta nenhum parâmetro ao modelo. Ela organiza o uso do que já existe —
+    e é a primeira vez que a ordem das operações vira contrato, porque agora há estado
+    atravessando os passos.
+  </p>
+
+  <div class="legend">
+    <span><span class="swatch h0"></span>o caminho correto</span>
+    <span><span class="swatch h1"></span>o que quebra, e como</span>
+  </div>
+
+  <h2><span class="num">01</span> As seis operações, e as três trocas que quebram</h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 400" role="img" aria-label="As seis operações de um passo de treino, em ordem, com as três inversões que quebram o treino">
+        <text class="lbl strong" x="20" y="24">um passo de treino</text>
+
+        <rect class="cell hot2" x="20" y="40" width="130" height="40"></rect>
+        <text class="cell-text" x="85" y="55">1 · amostrar</text>
+        <text class="cell-text soft" x="85" y="70">inputs, targets</text>
+
+        <rect class="cell hot2" x="20" y="95" width="130" height="40"></rect>
+        <text class="cell-text" x="85" y="110">2 · forward</text>
+        <text class="cell-text soft" x="85" y="125">logits, loss</text>
+
+        <rect class="cell hot2" x="20" y="150" width="130" height="40"></rect>
+        <text class="cell-text" x="85" y="165">3 · zerar</text>
+        <text class="cell-text soft" x="85" y="180">zeroGrad()</text>
+
+        <rect class="cell hot2" x="20" y="205" width="130" height="40"></rect>
+        <text class="cell-text" x="85" y="220">4 · backward</text>
+        <text class="cell-text soft" x="85" y="235">preenche o grad</text>
+
+        <rect class="cell hot2" x="20" y="260" width="130" height="40"></rect>
+        <text class="cell-text" x="85" y="275">5 · clipar</text>
+        <text class="cell-text soft" x="85" y="290">norma global</text>
+
+        <rect class="cell hot2" x="20" y="315" width="130" height="40"></rect>
+        <text class="cell-text" x="85" y="330">6 · atualizar</text>
+        <text class="cell-text soft" x="85" y="345">step(lr)</text>
+
+        <path class="arrow hot2" d="M85 80 L 85 93" marker-end="url(#arrowhead-hot2)"></path>
+        <path class="arrow hot2" d="M85 135 L 85 148" marker-end="url(#arrowhead-hot2)"></path>
+        <path class="arrow hot2" d="M85 190 L 85 203" marker-end="url(#arrowhead-hot2)"></path>
+        <path class="arrow hot2" d="M85 245 L 85 258" marker-end="url(#arrowhead-hot2)"></path>
+        <path class="arrow hot2" d="M85 300 L 85 313" marker-end="url(#arrowhead-hot2)"></path>
+
+        <text class="lbl strong" x="200" y="24">o que acontece se…</text>
+
+        <rect class="cell hot" x="200" y="40" width="480" height="66"></rect>
+        <text class="cell-text hot" x="440" y="58">3 depois de 4 — zerar depois do backward</text>
+        <text class="cell-text soft" x="440" y="78">o gradiente é calculado e imediatamente apagado</text>
+        <text class="cell-text soft" x="440" y="94">sintoma: a perda fica parada num valor plausível, para sempre</text>
+
+        <rect class="cell hot" x="200" y="120" width="480" height="66"></rect>
+        <text class="cell-text hot" x="440" y="138">3 nunca — esquecer de zerar</text>
+        <text class="cell-text soft" x="440" y="158">no passo 10 o gradiente é a soma dos dez lotes vistos</text>
+        <text class="cell-text soft" x="440" y="174">sintoma: nenhum — o Adam normaliza a escala, e só a direção sai errada</text>
+
+        <rect class="cell hot" x="200" y="200" width="480" height="66"></rect>
+        <text class="cell-text hot" x="440" y="218">5 depois de 6 — clipar depois de atualizar</text>
+        <text class="cell-text soft" x="440" y="238">os parâmetros já se moveram; o corte só afeta o passo seguinte</text>
+        <text class="cell-text soft" x="440" y="254">sintoma: o clipping simplesmente não protege nada</text>
+
+        <rect class="cell ghost" x="200" y="285" width="480" height="70"></rect>
+        <text class="cell-text soft" x="440" y="307">O zeroGrad zera os PARÂMETROS, não o grafo inteiro.</text>
+        <text class="cell-text soft" x="440" y="325">Cada forward constrói um grafo novo, cujos nós nascem zerados —</text>
+        <text class="cell-text soft" x="440" y="343">só os parâmetros atravessam os passos.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 1</span> Duas das três inversões são silenciosas. A do meio é a pior:
+      o <code>Gradient</code> só acumula, por decisão da Etapa 2, e essa mesma soma vira lixo fora de
+      uma passada.
+    </div>
+  </div>
+
+  <h2><span class="num">02</span> A taxa de aprendizado, passo a passo</h2>
+
+  <p>
+    Rampa linear até o pico, meia volta de cosseno depois. As duas pontas planas do cosseno são
+    o ponto: passos grandes enquanto ainda há muito a aprender, ajuste fino no fim.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 320" role="img" aria-label="Curva da taxa de aprendizado: rampa linear de aquecimento seguida de decaimento em cosseno">
+        <line class="axis" x1="90" y1="280" x2="660" y2="280"></line>
+        <line class="axis" x1="90" y1="50" x2="90" y2="280"></line>
+
+        <line class="grid" x1="90" y1="72.5" x2="660" y2="72.5"></line>
+        <text class="lbl hot2" x="666" y="76">lrMax</text>
+        <line class="grid" x1="90" y1="241.2" x2="660" y2="241.2"></line>
+        <text class="lbl hot2" x="666" y="245">lrMin</text>
+
+        <line class="grid" x1="145.5" y1="50" x2="145.5" y2="280"></line>
+        <text class="lbl hot" x="150" y="62">fim do aquecimento</text>
+
+        <polyline class="arrow hot2" fill="none" points="90.0,258.1 95.6,239.4 101.2,220.6 106.8,201.9 112.4,183.1 118.0,164.4 123.6,145.6 129.2,126.9 134.8,108.1 140.5,89.4 145.5,72.5 156.7,72.7 167.9,73.3 179.1,74.3 190.3,75.8 201.6,77.6 212.8,79.8 224.0,82.4 235.2,85.3 246.4,88.6 257.6,92.2 268.8,96.2 280.0,100.4 291.2,104.9 302.5,109.7 313.7,114.7 324.9,119.9 336.1,125.3 347.3,130.8 358.5,136.5 369.7,142.2 380.9,148.1 392.1,153.9 403.4,159.8 414.6,165.7 425.8,171.5 437.0,177.3 448.2,182.9 459.4,188.5 470.6,193.9 481.8,199.1 493.0,204.1 504.3,208.8 515.5,213.3 526.7,217.6 537.9,221.5 549.1,225.1 560.3,228.4 571.5,231.4 582.7,234.0 593.9,236.2 605.2,238.0 616.4,239.4 627.6,240.4 638.8,241.0 650.0,241.2"></polyline>
+
+        <circle cx="90" cy="258.1" r="4" fill="var(--accent)"></circle>
+        <text class="lbl hot" x="96" y="272">3.0e-6</text>
+
+        <circle cx="397.7" cy="156.9" r="4" fill="var(--accent)"></circle>
+        <text class="lbl hot" x="330" y="150">meio: 1.65e-4</text>
+
+        <line class="arrow ghost" x1="650" y1="241.2" x2="660" y2="241.2"></line>
+
+        <text class="lbl" x="86" y="298">1</text>
+        <text class="lbl" x="136" y="298">100</text>
+        <text class="lbl" x="388" y="298">550</text>
+        <text class="lbl" x="636" y="298">1000</text>
+        <text class="lbl strong" x="360" y="314">step</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 2</span> <code>lrMax = 3e-4</code>, <code>lrMin = 3e-5</code>,
+      <code>warmupSteps = 100</code>, <code>totalSteps = 1000</code>. No meio do cosseno o valor é a
+      média aritmética dos extremos — <code>(3e-4 + 3e-5)/2 = 1.65e-4</code>, que é como se confere a
+      fórmula sem simular nada. Passado o fim, a curva trava em <code>lrMin</code>: sem esse
+      travamento ela subiria de volta.
+    </div>
+  </div>
+
+  <h2><span class="num">03</span> Norma global × norma por parâmetro</h2>
+
+  <p>
+    Clipar cada parâmetro separadamente parece equivalente. Não é: cada um receberia um fator
+    diferente, e a direção conjunta do passo mudaria.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 300" role="img" aria-label="A norma global preserva a razão entre gradientes; a norma por parâmetro a distorce">
+        <text class="lbl strong" x="20" y="24">gradientes originais · maxNorm = 1.0</text>
+        <rect class="cell" x="20" y="36" width="200" height="52"></rect>
+        <text class="cell-text" x="120" y="54">a = [3, −4]   b = [0.1]</text>
+        <text class="cell-text hot" x="120" y="74">razão a₀/b₀ = 30.0</text>
+
+        <path class="arrow hot2" d="M225 50 L 290 50" marker-end="url(#arrowhead-hot2)"></path>
+        <path class="arrow hot" d="M225 74 L 290 74" marker-end="url(#arrowhead-hot)"></path>
+
+        <rect class="cell hot2" x="292" y="30" width="388" height="76"></rect>
+        <text class="cell-text hot2" x="486" y="48">norma GLOBAL = √(9 + 16 + 0.01) = 5.001000</text>
+        <text class="cell-text soft" x="486" y="68">um fator só, 0.199960, para todo mundo</text>
+        <text class="cell-text soft" x="486" y="88">a → [0.599880, −0.799840]     b → [0.019996]</text>
+
+        <rect class="cell hot" x="292" y="126" width="388" height="76"></rect>
+        <text class="cell-text hot" x="486" y="144">norma POR PARÂMETRO: ‖a‖ = 5.0, ‖b‖ = 0.1</text>
+        <text class="cell-text soft" x="486" y="164">fatores diferentes: a corta por 0.2, b não corta</text>
+        <text class="cell-text soft" x="486" y="184">a → [0.600000, −0.800000]     b → [0.100000]</text>
+
+        <text class="lbl strong" x="20" y="230">a razão depois do corte</text>
+
+        <rect class="cell hot2" x="292" y="216" width="188" height="34"></rect>
+        <text class="cell-text hot2" x="386" y="233">30.0 — preservada</text>
+
+        <rect class="cell hot" x="492" y="216" width="188" height="34"></rect>
+        <text class="cell-text hot" x="586" y="233">6.0 — girou</text>
+
+        <text class="lbl" x="20" y="278">Encolher tudo pelo mesmo fator preserva a direção exatamente. Fatores</text>
+        <text class="lbl" x="20" y="294">distintos dão a b um peso cinco vezes maior do que o gradiente pediu.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 3</span> O corte por parâmetro deixou <code>b</code> intacto só porque a
+      norma dele já era pequena — e, ao não encolhê-lo junto, aumentou o peso relativo dele. O modelo
+      passa a andar numa direção que ninguém calculou.
+    </div>
+  </div>
+
+  <h2><span class="num">04</span> O que entra no checkpoint</h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 290" role="img" aria-label="Conteúdo do arquivo de checkpoint e o efeito de restaurar sem os momentos">
+        <rect class="cell hot2" x="20" y="40" width="300" height="150"></rect>
+        <text class="cell-text hot2" x="170" y="62">o arquivo</text>
+        <text class="cell-text soft" x="170" y="86">magic · versão · t · nº de parâmetros</text>
+        <text class="cell-text soft" x="170" y="108">por parâmetro, em ordem:</text>
+        <text class="cell-text soft" x="170" y="128">tamanho · valores</text>
+        <text class="cell-text soft" x="170" y="148">m (1º momento)</text>
+        <text class="cell-text soft" x="170" y="168">v (2º momento)</text>
+
+        <path class="arrow hot2" d="M325 90 L 390 90" marker-end="url(#arrowhead-hot2)"></path>
+        <path class="arrow hot" d="M325 150 L 390 150" marker-end="url(#arrowhead-hot)"></path>
+
+        <rect class="cell hot2" x="392" y="60" width="288" height="60"></rect>
+        <text class="cell-text hot2" x="536" y="80">com m, v e t</text>
+        <text class="cell-text soft" x="536" y="102">o passo seguinte é idêntico ao que seria</text>
+
+        <rect class="cell hot" x="392" y="130" width="288" height="76"></rect>
+        <text class="cell-text hot" x="536" y="150">só os pesos</text>
+        <text class="cell-text soft" x="536" y="170">t volta a 0, e a correção de viés trata</text>
+        <text class="cell-text soft" x="536" y="188">o próximo passo como o PRIMEIRO</text>
+
+        <text class="lbl" x="20" y="238">Depois de mil passos de momento acumulado, um passo de tamanho lr cheio,</text>
+        <text class="lbl" x="20" y="256">guiado por um único lote. O treino continua, e a curva ganha um degrau</text>
+        <text class="lbl" x="20" y="274">que ninguém sabe explicar.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 4</span> O teste que fecha a questão: dar mais um passo dos dois lados
+      produz exatamente os mesmos parâmetros. Um terceiro modelo, que carregou os pesos mas com
+      otimizador zerado, diverge nesse mesmo passo.
+    </div>
+  </div>
+
+  <h2><span class="num">05</span> Ler a curva</h2>
+
+  <p>
+    Cinco números por passo custam quase nada e transformam "a perda não desce" numa pergunta
+    respondível. A perda inicial é a primeira coisa a conferir: ela tem que estar perto de
+    <code>log(V)</code>.
+  </p>
+
+  <pre>step     1 | lr 3.000e-06 | |grad|  2.7183 | loss  1.0986 | ppl     3.00
+step    10 | lr 3.000e-05 | |grad|  1.0000 | loss  0.8137 | ppl     2.26
+step    30 | lr 1.500e-04 | |grad|  0.7412 | loss  0.4021 | ppl     1.49
+step    60 | lr 1.000e-03 | |grad|  0.3155 | loss  0.1904 | ppl     1.21</pre>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 250" role="img" aria-label="Quatro perfis de curva de perda e o que cada um indica">
+        <rect class="cell hot2" x="20" y="30" width="325" height="88"></rect>
+        <text class="cell-text hot2" x="182" y="50">cai e estabiliza</text>
+        <text class="cell-text soft" x="182" y="72">saudável. começa em log(V) e desce</text>
+        <text class="cell-text soft" x="182" y="94">nada a fazer</text>
+
+        <rect class="cell hot" x="355" y="30" width="325" height="88"></rect>
+        <text class="cell-text hot" x="517" y="50">não desce</text>
+        <text class="cell-text soft" x="517" y="72">nesta ordem: o lr saiu do zero? o zeroGrad</text>
+        <text class="cell-text soft" x="517" y="94">está antes do backward? ‖g‖ é maior que zero?</text>
+
+        <rect class="cell hot" x="20" y="132" width="325" height="88"></rect>
+        <text class="cell-text hot" x="182" y="152">desce e volta a subir</text>
+        <text class="cell-text soft" x="182" y="174">taxa alta demais, ou clipping frouxo</text>
+        <text class="cell-text soft" x="182" y="196">a norma no log diz qual dos dois</text>
+
+        <rect class="cell" x="355" y="132" width="325" height="88"></rect>
+        <text class="cell-text" x="517" y="152">treino cai, validação sobe</text>
+        <text class="cell-text soft" x="517" y="174">overfitting — o único caso desta lista</text>
+        <text class="cell-text soft" x="517" y="196">que NÃO é bug</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 5</span> Um <code>‖g‖</code> exatamente zero significa que o gradiente não
+      está chegando aos parâmetros. Uma perda inicial bem <em>abaixo</em> de <code>log(V)</code> é
+      pior que uma acima: o modelo está vendo a resposta, e o suspeito é a máscara causal.
+    </div>
+  </div>
+
+  <footer>mini-gpt · theory/18-training-loop · guia visual</footer>
+</div>

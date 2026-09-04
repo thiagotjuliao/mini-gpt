@@ -1,0 +1,293 @@
+<title>Modelo GPT Completo — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .cell-text.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.hot2 { stroke: var(--accent2); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-soft); margin: 0.6em 0 1.4em; font-family: "JetBrains Mono", monospace; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; vertical-align: -2px; margin-right: 6px; }
+  .swatch.h0 { background: var(--accent2-soft); border-color: var(--accent2); }
+  .swatch.h1 { background: var(--accent-soft); border-color: var(--accent); }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-hot2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+    <marker id="arrowhead-ghost" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"></path></marker>
+  </defs>
+</svg>
+
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Modelo GPT Completo</h1>
+    <div class="meta">mini-gpt<br>de inteiros<br>a logits</div>
+    <div class="sub">Folha 01 · Etapa 15 — Modelo GPT · guia visual</div>
+  </div>
+
+  <p>
+    O modelo inteiro tem seis passos, e só o último muda o formato. Nas figuras,
+    <code>V</code> é o tamanho do vocabulário e <code>L</code> o número de blocos.
+  </p>
+  <div class="legend">
+    <span><span class="swatch h0"></span>formato preservado — <code>[B, T, dModel]</code></span>
+    <span><span class="swatch h1"></span>onde o formato muda</span>
+  </div>
+
+  <h2><span class="num">§1</span> o caminho completo</h2>
+  <p>
+    A coluna do meio é a mesma da Etapa 14, repetida <code>L</code> vezes. Foi para isso que o bloco
+    preservou o formato: a pilha é a mesma função aplicada de novo, e de novo.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 640 470" width="640" role="img" aria-label="O caminho de tokens ate logits, passo a passo">
+        <rect class="cell hot" x="200" y="16" width="240" height="34"></rect>
+        <text class="cell-text hot" x="320" y="33">tokens  [B, T]   inteiros</text>
+        <line class="arrow" x1="320" y1="52" x2="320" y2="72" marker-end="url(#arrowhead)"></line>
+
+        <rect class="cell" x="120" y="74" width="180" height="34"></rect>
+        <text class="cell-text soft" x="210" y="91">tabela de token [V, d]</text>
+        <rect class="cell" x="340" y="74" width="180" height="34"></rect>
+        <text class="cell-text soft" x="430" y="91">tabela de posição [C, d]</text>
+        <path class="arrow" d="M210 110 L 210 128 L 306 128" marker-end="url(#arrowhead)"></path>
+        <path class="arrow" d="M430 110 L 430 128 L 334 128" marker-end="url(#arrowhead)"></path>
+        <circle cx="320" cy="128" r="13" fill="var(--plate-bg)" stroke="var(--accent2)" stroke-width="1.8"></circle>
+        <text class="cell-text hot2" x="320" y="129">+</text>
+        <text class="lbl" x="536" y="132">Etapa 9</text>
+
+        <line class="arrow hot2" x1="320" y1="141" x2="320" y2="164" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell hot2" x="200" y="166" width="240" height="34"></rect>
+        <text class="cell-text hot2" x="320" y="183">x  [B, T, dModel]</text>
+
+        <line class="arrow hot2" x1="320" y1="202" x2="320" y2="222" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell" x="180" y="224" width="280" height="36"></rect>
+        <text class="cell-text" x="320" y="242">TransformerBlock 1</text>
+        <line class="arrow hot2" x1="320" y1="262" x2="320" y2="278" marker-end="url(#arrowhead-hot2)"></line>
+        <text class="cell-text soft" x="320" y="292">⋮   L blocos, pesos independentes</text>
+        <line class="arrow hot2" x1="320" y1="300" x2="320" y2="316" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell" x="180" y="318" width="280" height="36"></rect>
+        <text class="cell-text" x="320" y="336">TransformerBlock L</text>
+        <text class="lbl" x="480" y="292">Etapa 14</text>
+
+        <line class="arrow hot2" x1="320" y1="356" x2="320" y2="374" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell" x="200" y="376" width="240" height="34"></rect>
+        <text class="cell-text" x="320" y="393">LayerNorm final (ln_f)</text>
+
+        <line class="arrow hot" x1="320" y1="412" x2="320" y2="428" marker-end="url(#arrowhead-hot)"></line>
+        <rect class="cell hot" x="160" y="430" width="320" height="34"></rect>
+        <text class="cell-text hot" x="320" y="447">cabeça → logits  [B, T, V]</text>
+        <text class="lbl hot" x="492" y="452">único passo</text>
+        <text class="lbl hot" x="492" y="466">que muda o formato</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 1</span>
+      Do lado esquerdo entram inteiros; do direito saem <code>V</code> pontuações por posição. A
+      posição <code>t</code> prevê o token <code>t+1</code>, e é a máscara causal da Etapa 11 que
+      torna isso legítimo — nenhuma dessas previsões enxergou a resposta.
+    </div>
+  </div>
+
+  <h2><span class="num">§2</span> por que a posição precisa entrar</h2>
+  <p>
+    Numa camada de atenção causal sem embedding posicional, a saída na posição <code>t</code> depende apenas de
+    <strong>quais</strong> tokens estão no prefixo — não de onde eles estão. Trocar dois tokens
+    anteriores não muda nada na saída de <code>t</code>. Nada: a diferença medida é
+    <code>0.0</code> exato.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 640 300" width="640" role="img" aria-label="Permutar o prefixo nao muda a saida da ultima posicao quando nao ha embedding posicional">
+        <text class="lbl strong" x="20" y="22">SEM EMBEDDING POSICIONAL</text>
+
+        <rect class="cell" x="20" y="40" width="56" height="32"></rect><text class="cell-text" x="48" y="56">a</text>
+        <rect class="cell" x="80" y="40" width="56" height="32"></rect><text class="cell-text" x="108" y="56">b</text>
+        <rect class="cell hot2" x="140" y="40" width="56" height="32"></rect><text class="cell-text hot2" x="168" y="56">c</text>
+        <path class="arrow" d="M200 56 L 246 56" marker-end="url(#arrowhead)"></path>
+        <rect class="cell" x="250" y="38" width="120" height="36"></rect>
+        <text class="cell-text soft" x="310" y="56">atenção causal</text>
+        <path class="arrow hot2" d="M372 56 L 408 56" marker-end="url(#arrowhead-hot2)"></path>
+        <rect class="cell hot2" x="410" y="38" width="210" height="36"></rect>
+        <text class="cell-text hot2" x="515" y="56">t=2 → [-1.8737, 0.4385, ...]</text>
+
+        <rect class="cell" x="20" y="100" width="56" height="32"></rect><text class="cell-text" x="48" y="116">b</text>
+        <rect class="cell" x="80" y="100" width="56" height="32"></rect><text class="cell-text" x="108" y="116">a</text>
+        <rect class="cell hot2" x="140" y="100" width="56" height="32"></rect><text class="cell-text hot2" x="168" y="116">c</text>
+        <path class="arrow" d="M200 116 L 246 116" marker-end="url(#arrowhead)"></path>
+        <rect class="cell" x="250" y="98" width="120" height="36"></rect>
+        <text class="cell-text soft" x="310" y="116">atenção causal</text>
+        <path class="arrow hot2" d="M372 116 L 408 116" marker-end="url(#arrowhead-hot2)"></path>
+        <rect class="cell hot2" x="410" y="98" width="210" height="36"></rect>
+        <text class="cell-text hot2" x="515" y="116">t=2 → [-1.8737, 0.4385, ...]</text>
+
+        <text class="lbl hot2" x="20" y="156">prefixo trocado · última saída idêntica · diferença 0.0</text>
+        <text class="lbl" x="20" y="172">(em t=0 a diferença é 4.69444 — ali o token realmente mudou)</text>
+
+        <line class="arrow ghost" x1="20" y1="190" x2="620" y2="190"></line>
+
+        <text class="lbl strong hot" x="20" y="216">COM EMBEDDING POSICIONAL</text>
+        <rect class="cell" x="20" y="232" width="56" height="32"></rect><text class="cell-text" x="48" y="248">a+P₀</text>
+        <rect class="cell" x="80" y="232" width="56" height="32"></rect><text class="cell-text" x="108" y="248">b+P₁</text>
+        <rect class="cell hot" x="140" y="232" width="56" height="32"></rect><text class="cell-text hot" x="168" y="248">c+P₂</text>
+        <path class="arrow" d="M200 248 L 246 248" marker-end="url(#arrowhead)"></path>
+        <rect class="cell" x="250" y="230" width="120" height="36"></rect>
+        <text class="cell-text soft" x="310" y="248">atenção causal</text>
+        <path class="arrow hot" d="M372 248 L 408 248" marker-end="url(#arrowhead-hot)"></path>
+        <rect class="cell hot" x="410" y="230" width="210" height="36"></rect>
+        <text class="cell-text hot" x="515" y="248">t=2 muda em 0.417607</text>
+        <text class="lbl hot" x="20" y="288">o mesmo token em posições diferentes deixou de ser o mesmo objeto</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 2</span>
+      A degenerescência não é sutil: os quatro números da saída são idênticos bit a bit. Vale a
+      ressalva de profundidade — com <strong>duas</strong> camadas a diferença já aparece
+      (<code>5.1e-2</code>), porque a assimetria da máscara vira sinal. A tabela é o que torna a
+      posição direta desde a primeira camada.
+    </div>
+  </div>
+
+  <h2><span class="num">§5</span> pesos amarrados</h2>
+  <p>
+    A tabela de embedding guarda um vetor por token. A cabeça de linguagem também. Amarrar é usar
+    <strong>a mesma matriz</strong> nas duas pontas — transposta na saída.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 620 250" width="620" role="img" aria-label="A mesma tabela usada na entrada e, transposta, na saida">
+        <rect class="cell hot" x="240" y="94" width="140" height="62"></rect>
+        <text class="cell-text hot" x="310" y="115">E</text>
+        <text class="cell-text soft" x="310" y="136">[V, dModel]</text>
+        <text class="lbl hot" x="252" y="176">um vetor por token</text>
+
+        <rect class="cell" x="20" y="40" width="140" height="34"></rect>
+        <text class="cell-text soft" x="90" y="57">token 42</text>
+        <path class="arrow hot2" d="M90 76 L 90 110 L 236 110" marker-end="url(#arrowhead-hot2)"></path>
+        <text class="lbl hot2" x="24" y="100">lê a linha 42</text>
+
+        <path class="arrow hot2" d="M384 140 L 470 140 L 470 106" marker-end="url(#arrowhead-hot2)"></path>
+        <rect class="cell" x="400" y="40" width="200" height="34"></rect>
+        <text class="cell-text soft" x="500" y="57">logits = x · Eᵀ</text>
+        <text class="lbl hot2" x="392" y="160">usa a transposta</text>
+
+        <text class="lbl strong" x="20" y="212">GPT-2 small:  163.018.752 sem amarrar   →   124.421.376 amarrado</text>
+        <text class="lbl hot" x="20" y="232">economia de 38.597.376 parâmetros — 23,7% do modelo</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 3</span>
+      A transposta é uma <em>view</em> neste projeto: o <code>matmul</code> lê os operandos pelas
+      strides, sem copiar. O cuidado que sobra é no <code>parameters</code>, que precisa listar o
+      tensor uma única vez — senão o otimizador da Etapa 17 o atualiza duas vezes por passo.
+    </div>
+  </div>
+
+  <h2><span class="num">§7</span> onde moram os parâmetros</h2>
+  <p>
+    A mesma arquitetura tem perfis muito diferentes conforme o vocabulário. Com 65 caracteres,
+    quase tudo está na pilha; com 50 mil tokens, um terço do modelo é tabela.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 620 230" width="620" role="img" aria-label="Proporcao de parametros entre embeddings e pilha, no modelo tiny e no GPT-2 small">
+        <text class="lbl strong" x="20" y="30">tiny — V=65, d=128, L=4 · 817.024 parâmetros</text>
+        <rect x="20" y="42" width="12.1" height="34" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"></rect>
+        <rect x="32.1" y="42" width="387.9" height="34" fill="var(--accent2-soft)" stroke="var(--accent2)" stroke-width="1.5"></rect>
+        <text class="lbl hot" x="20" y="92">3,0% embeddings</text>
+        <text class="lbl hot2" x="180" y="92">96,9% pilha</text>
+
+        <text class="lbl strong" x="20" y="146">GPT-2 small — V=50.257, d=768, L=12 · 124.421.376 parâmetros</text>
+        <rect x="20" y="158" width="126.6" height="34" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"></rect>
+        <rect x="146.6" y="158" width="273.4" height="34" fill="var(--accent2-soft)" stroke="var(--accent2)" stroke-width="1.5"></rect>
+        <text class="lbl hot" x="20" y="208">31,7% embeddings</text>
+        <text class="lbl hot2" x="180" y="208">68,3% pilha</text>
+
+        <text class="lbl" x="440" y="62">as duas barras têm</text>
+        <text class="lbl" x="440" y="78">a mesma largura:</text>
+        <text class="lbl" x="440" y="94">são proporções,</text>
+        <text class="lbl" x="440" y="110">não tamanhos</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 4</span>
+      O LayerNorm final não aparece porque não caberia: são 256 parâmetros no tiny e 1.536 no
+      GPT-2 — menos de um milésimo do total nos dois casos. As barras estão com pesos amarrados;
+      sem amarrar, a fatia laranja do GPT-2 quase dobraria.
+    </div>
+  </div>
+
+  <footer>mini-gpt · theory/15-gpt-model · guia visual</footer>
+</div>

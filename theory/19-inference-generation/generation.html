@@ -1,0 +1,358 @@
+<title>Geração de texto — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .cell-text.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.hot2 { stroke: var(--accent2); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  .axis { stroke: var(--line-strong); stroke-width: 1.2; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-soft); margin: 0.6em 0 1.4em; font-family: "JetBrains Mono", monospace; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; vertical-align: -2px; margin-right: 6px; }
+  .swatch.h0 { background: var(--accent2-soft); border-color: var(--accent2); }
+  .swatch.h1 { background: var(--accent-soft); border-color: var(--accent); }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-hot2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Geração de texto</h1>
+    <div class="meta">mini-gpt<br>o produto final,<br>e a última etapa</div>
+    <div class="sub">Folha 01 · Etapa 19 — Inferência e geração · guia visual</div>
+  </div>
+
+  <p>
+    O modelo não ganha nenhuma capacidade nesta etapa. O que muda é realimentar a saída na
+    entrada — e é isso que transforma um classificador de próximo token num gerador.
+    Todas as figuras usam <code>z = [2.0, 1.0, 0.0, −1.0]</code>.
+  </p>
+
+  <div class="legend">
+    <span><span class="swatch h0"></span>o que o modelo devolve</span>
+    <span><span class="swatch h1"></span>a decisão de quem lê</span>
+  </div>
+
+  <h2><span class="num">01</span> O laço autoregressivo</h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 300" role="img" aria-label="O laço de geração: o token escolhido volta para o fim do contexto">
+        <rect class="cell hot2" x="20" y="40" width="140" height="46"></rect>
+        <text class="cell-text" x="90" y="56">contexto</text>
+        <text class="cell-text soft" x="90" y="74">os últimos T tokens</text>
+
+        <path class="arrow" d="M162 63 L 216 63" marker-end="url(#arrowhead)"></path>
+
+        <rect class="cell hot2" x="218" y="40" width="150" height="46"></rect>
+        <text class="cell-text" x="293" y="56">model.forward</text>
+        <text class="cell-text soft" x="293" y="74">logits [1, T, V]</text>
+
+        <path class="arrow" d="M370 63 L 424 63" marker-end="url(#arrowhead)"></path>
+
+        <rect class="cell hot2" x="426" y="40" width="150" height="46"></rect>
+        <text class="cell-text" x="501" y="56">última posição</text>
+        <text class="cell-text soft" x="501" y="74">z, um vetor de V</text>
+
+        <path class="arrow hot" d="M501 88 L 501 132" marker-end="url(#arrowhead-hot)"></path>
+
+        <rect class="cell hot" x="426" y="134" width="150" height="46"></rect>
+        <text class="cell-text hot" x="501" y="150">Sampler.next</text>
+        <text class="cell-text soft" x="501" y="168">greedy · T · top-k</text>
+
+        <path class="arrow hot" d="M424 157 L 200 157" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="235" y="148">o token escolhido volta para o fim do contexto</text>
+
+        <path class="arrow hot" d="M198 157 C 120 157, 90 130, 90 90" marker-end="url(#arrowhead-hot)"></path>
+
+        <rect class="cell ghost" x="20" y="210" width="556" height="66"></rect>
+        <text class="cell-text soft" x="298" y="232">Das T distribuições que o modelo devolve, T−1 preveem tokens que você já tem.</text>
+        <text class="cell-text soft" x="298" y="252">Só a última prevê algo novo — as outras são descartadas.</text>
+        <text class="cell-text soft" x="298" y="270">Reaproveitá-las é o KV cache, que este projeto não faz.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 1</span> O modelo é o mesmo do treino, rodando dentro de
+      <code>noGrad</code>. A única novidade é a seta de volta.
+    </div>
+  </div>
+
+  <h2><span class="num">02</span> A janela deslizante</h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 260" role="img" aria-label="A janela deslizante corta os tokens mais antigos quando a sequência passa do contexto">
+        <text class="lbl strong" x="20" y="24">contextLength = 4 · prompt [0, 1, 2]</text>
+
+        <text class="lbl" x="20" y="62">passo 1</text>
+        <rect class="cell hot2" x="100" y="48" width="46" height="24"></rect><text class="cell-text" x="123" y="61">0</text>
+        <rect class="cell hot2" x="148" y="48" width="46" height="24"></rect><text class="cell-text" x="171" y="61">1</text>
+        <rect class="cell hot2" x="196" y="48" width="46" height="24"></rect><text class="cell-text" x="219" y="61">2</text>
+        <text class="lbl" x="420" y="62">nada esquecido</text>
+
+        <text class="lbl" x="20" y="102">passo 2</text>
+        <rect class="cell hot2" x="100" y="88" width="46" height="24"></rect><text class="cell-text" x="123" y="101">0</text>
+        <rect class="cell hot2" x="148" y="88" width="46" height="24"></rect><text class="cell-text" x="171" y="101">1</text>
+        <rect class="cell hot2" x="196" y="88" width="46" height="24"></rect><text class="cell-text" x="219" y="101">2</text>
+        <rect class="cell hot2" x="244" y="88" width="46" height="24"></rect><text class="cell-text" x="267" y="101">0</text>
+        <text class="lbl" x="420" y="102">a janela encheu</text>
+
+        <text class="lbl" x="20" y="142">passo 3</text>
+        <rect class="cell ghost" x="100" y="128" width="46" height="24"></rect><text class="cell-text soft" x="123" y="141">0</text>
+        <rect class="cell hot2" x="148" y="128" width="46" height="24"></rect><text class="cell-text" x="171" y="141">1</text>
+        <rect class="cell hot2" x="196" y="128" width="46" height="24"></rect><text class="cell-text" x="219" y="141">2</text>
+        <rect class="cell hot2" x="244" y="128" width="46" height="24"></rect><text class="cell-text" x="267" y="141">0</text>
+        <rect class="cell hot2" x="292" y="128" width="46" height="24"></rect><text class="cell-text" x="315" y="141">1</text>
+        <text class="lbl hot" x="420" y="142">o 0 inicial saiu</text>
+
+        <text class="lbl" x="20" y="182">passo 4</text>
+        <rect class="cell ghost" x="100" y="168" width="46" height="24"></rect><text class="cell-text soft" x="123" y="181">0</text>
+        <rect class="cell ghost" x="148" y="168" width="46" height="24"></rect><text class="cell-text soft" x="171" y="181">1</text>
+        <rect class="cell hot2" x="196" y="168" width="46" height="24"></rect><text class="cell-text" x="219" y="181">2</text>
+        <rect class="cell hot2" x="244" y="168" width="46" height="24"></rect><text class="cell-text" x="267" y="181">0</text>
+        <rect class="cell hot2" x="292" y="168" width="46" height="24"></rect><text class="cell-text" x="315" y="181">1</text>
+        <rect class="cell hot2" x="340" y="168" width="46" height="24"></rect><text class="cell-text" x="363" y="181">2</text>
+        <text class="lbl hot" x="420" y="182">0 e 1 saíram</text>
+
+        <text class="lbl" x="20" y="224">Corta pela esquerda porque a previsão depende muito mais do que veio logo antes.</text>
+        <text class="lbl" x="20" y="242">O custo é real: fora da janela, o modelo esquece — não há memória nenhuma ali.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 2</span> A tabela de posições da Etapa 9 só cobre
+      <code>contextLength</code> posições, então a sequência inteira não caberia. O teste
+      <em>let generation run past the context length</em> existe para isto: sem a janela, o
+      <code>require</code> do modelo dispararia no passo 3.
+    </div>
+  </div>
+
+  <h2><span class="num">03</span> A temperatura é o botão entre coerência e criatividade</h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 344" role="img" aria-label="A mesma distribuição sob três temperaturas: concentrada, natural e espalhada">
+        <text class="lbl strong" x="20" y="24">T = 0.5 — concentrada</text>
+        <rect class="cell hot2" x="110" y="34" width="346" height="18"></rect>
+        <text class="cell-text soft" x="500" y="43">0.864955</text>
+        <text class="lbl" x="20" y="47">token 0</text>
+        <rect class="cell hot2" x="110" y="56" width="47" height="18"></rect>
+        <text class="cell-text soft" x="500" y="65">0.117059</text>
+        <text class="lbl" x="20" y="69">token 1</text>
+        <rect class="cell hot2" x="110" y="78" width="6" height="18"></rect>
+        <text class="cell-text soft" x="500" y="87">0.015842</text>
+        <text class="lbl" x="20" y="91">token 2</text>
+        <rect class="cell hot2" x="110" y="100" width="1" height="18"></rect>
+        <text class="cell-text soft" x="500" y="109">0.002144</text>
+        <text class="lbl" x="20" y="113">token 3</text>
+
+        <text class="lbl strong" x="20" y="146">T = 1.0 — o softmax puro</text>
+        <rect class="cell hot2" x="110" y="156" width="258" height="18"></rect>
+        <text class="cell-text soft" x="500" y="165">0.643914</text>
+        <text class="lbl" x="20" y="169">token 0</text>
+        <rect class="cell hot2" x="110" y="178" width="95" height="18"></rect>
+        <text class="cell-text soft" x="500" y="187">0.236883</text>
+        <text class="lbl" x="20" y="191">token 1</text>
+        <rect class="cell hot2" x="110" y="200" width="35" height="18"></rect>
+        <text class="cell-text soft" x="500" y="209">0.087144</text>
+        <text class="lbl" x="20" y="213">token 2</text>
+        <rect class="cell hot2" x="110" y="222" width="13" height="18"></rect>
+        <text class="cell-text soft" x="500" y="231">0.032059</text>
+        <text class="lbl" x="20" y="235">token 3</text>
+
+        <text class="lbl strong" x="20" y="268">T = 2.0 — espalhada</text>
+        <rect class="cell hot" x="110" y="278" width="182" height="12"></rect>
+        <text class="cell-text soft" x="500" y="284">0.455054</text>
+        <rect class="cell hot" x="110" y="292" width="110" height="12"></rect>
+        <text class="cell-text soft" x="500" y="298">0.276004</text>
+        <rect class="cell hot" x="110" y="306" width="67" height="12"></rect>
+        <text class="cell-text soft" x="500" y="312">0.167405</text>
+        <rect class="cell hot" x="110" y="320" width="41" height="12"></rect>
+        <text class="cell-text soft" x="500" y="326">0.101536</text>
+        <text class="lbl hot" x="560" y="298">o pior token</text>
+        <text class="lbl hot" x="560" y="316">já tem 10%</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 3</span> Escala comum: 400 px valem 1.0. Com <code>T → 0</code> a
+      distribuição vira um pico e a amostragem coincide com o <code>Greedy</code>; com
+      <code>T → ∞</code> ela vira uniforme e o modelo passa a chutar. O <code>top-k</code> da
+      figura 4 existe porque temperatura alta dá massa a tokens que o modelo considera ruins.
+    </div>
+  </div>
+
+  <h2><span class="num">04</span> Top-k: cortar pelo ranking</h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 230" role="img" aria-label="Top-k mantém os dois maiores logits e manda o resto para menos infinito">
+        <text class="lbl strong" x="20" y="24">z original</text>
+        <rect class="cell hot2" x="140" y="34" width="110" height="30"></rect><text class="cell-text" x="195" y="49">2.0</text>
+        <rect class="cell hot2" x="252" y="34" width="110" height="30"></rect><text class="cell-text" x="307" y="49">1.0</text>
+        <rect class="cell hot2" x="364" y="34" width="110" height="30"></rect><text class="cell-text" x="419" y="49">0.0</text>
+        <rect class="cell hot2" x="476" y="34" width="110" height="30"></rect><text class="cell-text" x="531" y="49">−1.0</text>
+
+        <path class="arrow hot" d="M300 70 L 300 92" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="312" y="86">keepTopK(z, 2)</text>
+
+        <text class="lbl strong" x="20" y="114">depois do corte</text>
+        <rect class="cell hot2" x="140" y="98" width="110" height="30"></rect><text class="cell-text" x="195" y="113">2.0</text>
+        <rect class="cell hot2" x="252" y="98" width="110" height="30"></rect><text class="cell-text" x="307" y="113">1.0</text>
+        <rect class="cell ghost" x="364" y="98" width="110" height="30"></rect><text class="cell-text soft" x="419" y="113">−inf</text>
+        <rect class="cell ghost" x="476" y="98" width="110" height="30"></rect><text class="cell-text soft" x="531" y="113">−inf</text>
+
+        <path class="arrow hot" d="M300 134 L 300 156" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="312" y="150">softmax</text>
+
+        <text class="lbl strong" x="20" y="178">p final</text>
+        <rect class="cell hot" x="140" y="162" width="110" height="30"></rect><text class="cell-text hot" x="195" y="177">0.731059</text>
+        <rect class="cell hot" x="252" y="162" width="110" height="30"></rect><text class="cell-text hot" x="307" y="177">0.268941</text>
+        <rect class="cell ghost" x="364" y="162" width="110" height="30"></rect><text class="cell-text soft" x="419" y="177">0.0</text>
+        <rect class="cell ghost" x="476" y="162" width="110" height="30"></rect><text class="cell-text soft" x="531" y="177">0.0</text>
+
+        <text class="lbl" x="20" y="216">exp(−inf) = 0 exatamente, então os descartados somem no próprio softmax — sem segunda normalização.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 4</span> Compare com a linha <code>T = 1.0</code> da figura 3: o token 0
+      subiu de <code>0.643914</code> para <code>0.731059</code>. A massa dos descartados foi
+      redistribuída entre os sobreviventes, na proporção deles.
+    </div>
+  </div>
+
+  <h2><span class="num">05</span> Amostrar pela inversa da CDF</h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 232" role="img" aria-label="O intervalo de 0 a 1 dividido em fatias proporcionais às probabilidades">
+        <text class="lbl strong" x="20" y="24">o intervalo [0, 1), fatiado pelas probabilidades</text>
+
+        <rect class="cell hot2" x="70" y="40" width="360.6" height="40"></rect>
+        <text class="cell-text hot2" x="250" y="60">token 0 · 0.643914</text>
+        <rect class="cell hot2" x="430.6" y="40" width="132.7" height="40"></rect>
+        <text class="cell-text" x="497" y="60">1 · 0.2369</text>
+        <rect class="cell hot2" x="563.3" y="40" width="48.8" height="40"></rect>
+        <text class="cell-text soft" x="588" y="60">2</text>
+        <rect class="cell hot2" x="612.1" y="40" width="18.0" height="40"></rect>
+        <text class="cell-text soft" x="621" y="60">3</text>
+
+        <line class="axis" x1="70" y1="88" x2="630" y2="88"></line>
+        <text class="lbl" x="66" y="104">0.0</text>
+        <text class="lbl" x="404" y="104">0.6439</text>
+        <text class="lbl" x="536" y="104">0.8808</text>
+        <text class="lbl" x="590" y="104">0.9679</text>
+        <text class="lbl" x="616" y="104">1.0</text>
+
+        <path class="arrow hot" d="M270 130 L 270 92" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="216" y="146">u = 0.30 → token 0</text>
+
+        <path class="arrow hot" d="M494 130 L 494 92" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="450" y="146">u = 0.65 → token 1</text>
+
+        <path class="arrow hot" d="M580 168 L 580 92" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="520" y="184">u = 0.90 → token 2</text>
+
+        <text class="lbl" x="20" y="206">A largura de cada fatia é exatamente a probabilidade dela.</text>
+        <text class="lbl" x="20" y="224">Por isso sortear um ponto uniforme sorteia segundo p.</text>
+      </svg>
+    </div>
+    <div class="caption">
+      <span class="tag">FIG 5</span> A armadilha mora na borda direita: a soma acumulada pode parar
+      um epsilon <em>abaixo</em> de 1, por arredondamento. Se <code>u</code> cair nessa fresta,
+      nenhum índice satisfaz a condição — e a última posição é a resposta certa.
+    </div>
+  </div>
+
+  <h2><span class="num">06</span> O fim do projeto</h2>
+
+  <p>
+    A Etapa 1 construiu um array com um shape. A Etapa 19 gera texto. Entre as duas não há
+    nenhum salto: cada etapa usa só o que as anteriores construíram, e toda derivada foi
+    obtida à mão e conferida por diferença finita.
+  </p>
+
+  <pre>prompt:   [0, 1, 2]
+gerado:   [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]
+
+o ciclo aprendido, continuado exatamente — tokenização, embedding,
+atenção causal, perda, autograd, otimizador e amostragem, todos de pé</pre>
+
+  <footer>mini-gpt · theory/19-inference-generation · guia visual</footer>
+</div>

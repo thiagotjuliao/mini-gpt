@@ -1,0 +1,378 @@
+<title>Exercícios — Etapa 13: Feed-Forward Network (MLP) — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Feed-Forward Network</h1>
+    <div class="meta">mini-gpt<br>onde o modelo<br>guarda o que sabe</div>
+    <div class="sub">Etapa 13 — MLP · 15 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="13-mlp.md">13-mlp.md</a> e <a href="mlp.html">mlp.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que significa dizer que o MLP é uma camada <em>posição a posição</em>?</p>
+    <div class="options">
+      <button class="option" data-key="a">cada posição tem os seus próprios pesos, treinados separadamente</button>
+      <button class="option" data-key="b">ele processa uma posição de cada vez, e por isso é mais lento que a atenção</button>
+      <button class="option" data-key="c">a mesma função, com os mesmos pesos, é aplicada a cada vetor da última dimensão, sem olhar as outras posições</button>
+      <button class="option" data-key="d">ele mistura as posições, mas só as vizinhas</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A opção A é o engano mais comum: os pesos são <em>compartilhados</em> por todas as posições, e é justamente por isso que os gradientes deles somam sobre <code>B·T</code>. A opção B confunde independência com sequencialidade — as <code>B·T</code> posições são calculadas de uma vez, num único <code>matmul</code> (§1).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Qual é a estrutura do MLP de um bloco transformer?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>GELU → Linear(dModel, dModel) → GELU</code></button>
+      <button class="option" data-key="b"><code>Linear(dModel, 4·dModel) → GELU → Linear(4·dModel, dModel)</code></button>
+      <button class="option" data-key="c"><code>Linear(dModel, dModel) → GELU → Linear(dModel, dModel)</code></button>
+      <button class="option" data-key="d"><code>Linear(4·dModel, dModel) → GELU → Linear(dModel, 4·dModel)</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Sobe para <code>4·dModel</code>, aplica a não-linearidade no espaço expandido, e desce de volta. A opção D inverte a ordem, e nem sequer aceitaria uma entrada <code>[B, T, dModel]</code>. A opção C funcionaria, mas sem expansão nenhuma (§2 e §4).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">No GPT-2 small, com <code>dModel = 768</code>, quanto vale <code>dFF</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">3072</button>
+      <button class="option" data-key="b">768</button>
+      <button class="option" data-key="c">192</button>
+      <button class="option" data-key="d">depende do número de blocos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>4 × 768 = 3072</code>. O fator 4 vem do transformer original, que usava <code>512 → 2048</code>, e foi mantido por todos os GPT desde então. Não há derivação por trás dele — é convenção empírica (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Quantos parâmetros o MLP tem, em função de <code>dModel</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>4·dModel² + 2·dModel</code></button>
+      <button class="option" data-key="b"><code>2·dModel² + dModel</code></button>
+      <button class="option" data-key="c"><code>16·dModel²</code></button>
+      <button class="option" data-key="d"><code>8·dModel² + 5·dModel</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Duas matrizes de <code>4·dModel²</code> cada, mais <code>4·dModel</code> de <code>b1</code> e <code>dModel</code> de <code>b2</code>. A opção A é a contagem do bloco de <em>atenção</em> — o MLP tem exatamente o dobro dela (§7).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que a expansão para <code>4·dModel</code> não compraria nada sem a GELU no meio?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque o tensor intermediário ficaria grande demais para a memória</button>
+      <button class="option" data-key="b">porque os gradientes explodiriam na camada larga</button>
+      <button class="option" data-key="c">porque <code>W1·W2</code> é uma matriz <code>[dModel, dModel]</code>, e as duas camadas colapsam numa só</button>
+      <button class="option" data-key="d">porque sem ativação o <code>matmul</code> perde as dimensões de lote</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É o princípio da superposição da Etapa 5 §1. Sem não-linearidade, qualquer sequência de camadas lineares é equivalente a uma única camada linear — e a largura do meio some no produto. A expansão só significa alguma coisa porque a GELU impede esse colapso (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Na leitura chave-valor, o que são a coluna <code>i</code> de <code>W1</code> e a linha <code>i</code> de <code>W2</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">a chave que o neurônio <code>i</code> procura, e o valor que ele escreve na saída</button>
+      <button class="option" data-key="b">a query e a key do neurônio, como na atenção</button>
+      <button class="option" data-key="c">as duas metades do vetor do token</button>
+      <button class="option" data-key="d">o gradiente e o valor acumulado do neurônio</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>Z[t,i] = xₜ·kᵢ + b1[i]</code> mede o alinhamento com a chave, e <code>Y[t] = Σᵢ A[t,i]·vᵢ + b2</code> escreve os valores ponderados. A diferença para a atenção importa: lá as chaves vêm dos outros tokens e mudam a cada frase; aqui são parâmetros, iguais para todas as frases (§3).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Nessa mesma leitura, qual o papel de <code>b1[i]</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">ele escala o valor <code>vᵢ</code> antes da soma</button>
+      <button class="option" data-key="b">ele é o limiar do neurônio: o disparo acontece quando <code>xₜ·kᵢ > −b1[i]</code></button>
+      <button class="option" data-key="c">ele normaliza a chave para norma 1</button>
+      <button class="option" data-key="d">nenhum — como na atenção, ele é um parâmetro morto</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Com <code>b1 = 0</code>, o limiar de todo neurônio seria exatamente zero, e a ativação dependeria só do sinal do produto interno. No exemplo do §3, o neurônio 1 tem <code>xₜ·kᵢ = 0.0</code> — é o <code>b1 = −1.0</code> que o mantém desligado. Nada aqui é parâmetro morto, ao contrário de <code>b_K</code> na Etapa 12 §8.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">O mesmo token aparece nas posições 3 e 7 de uma sequência. O que se pode afirmar sobre a saída do MLP?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada — depende do que a atenção fez antes</button>
+      <button class="option" data-key="b">as saídas serão próximas, mas diferentes, por causa da posição</button>
+      <button class="option" data-key="c">a posição 7 terá saída maior, por ter mais contexto acumulado</button>
+      <button class="option" data-key="d">as duas saídas serão idênticas, número a número</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Cuidado com o enunciado: a pergunta é sobre <em>vetores de entrada</em> iguais chegando ao MLP. Se os dois vetores são idênticos, os dois passam pela mesma função e saem idênticos. A opção A confunde os planos — o que a atenção fez antes decide se os vetores chegam iguais, mas, dado que chegaram, o MLP não tem como distingui-los (§1).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Qual é o gradiente de <code>W2</code>, e sobre o que ele soma?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>dY · W2ᵀ</code>, sem soma nenhuma</button>
+      <button class="option" data-key="b"><code>Aᵀ · dY</code>, com uma cópia por posição</button>
+      <button class="option" data-key="c"><code>Aᵀ · dY</code>, somado sobre <code>B</code> e <code>T</code></button>
+      <button class="option" data-key="d"><code>dZ · W1ᵀ</code>, somado sobre <code>T</code> apenas</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> <code>W2</code> é um tensor só, usado pelas <code>B·T</code> posições, então todas contribuem para o mesmo gradiente. A opção A é o <code>dA</code>. O gradiente sempre tem o formato do tensor a que se refere, e <code>W2</code> é <code>[dFF, dModel]</code> — não há eixo de posição onde guardar cópias (§5).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Com <code>dFF &lt; dModel</code>, o que a camada deixa de conseguir fazer, por mais treinada que esteja?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada — ela só fica mais lenta para convergir</button>
+      <button class="option" data-key="b">escrever fora do espaço gerado pelos <code>dFF</code> vetores <code>vᵢ</code>, que tem dimensão menor que a saída</button>
+      <button class="option" data-key="c">receber entradas de rank 3</button>
+      <button class="option" data-key="d">produzir saídas negativas</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A saída é <code>Σᵢ A[t,i]·vᵢ + b2</code>: uma combinação dos <code>dFF</code> vetores de valor, deslocada por <code>b2</code>. Com <code>dModel = 3</code> e <code>dFF = 2</code>, três saídas quaisquer são coplanares, e o determinante delas deu <code>-5.6e-16</code> no exemplo do capítulo. Com <code>dFF = 4</code>, o mesmo determinante deu <code>-259.029</code> (§2, FIG 2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que o grafo precisa guardar <code>Z</code>, e não basta guardar <code>A = gelu(Z)</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque a derivada da GELU tem <code>x</code> explícito, e não se reescreve só em função da saída</button>
+      <button class="option" data-key="b">porque <code>A</code> é descartado logo depois do forward</button>
+      <button class="option" data-key="c">porque <code>Z</code> é necessário para o <code>unbroadcast</code> de <code>b1</code></button>
+      <button class="option" data-key="d">não precisa — a GELU reusa a saída, como a sigmoid</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> A derivada é <code>0.5(1+t) + 0.5·x·(1−t²)·u'(x)</code>, com <code>x</code> aparecendo na regra do produto e dentro de <code>u'</code>. Sigmoid e tanh têm identidades que permitem a reescrita em função da saída; a GELU não tem. A opção D é o engano que a Etapa 5 §5 desfaz.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O fator 2 da inicialização de Kaiming compensa o corte de uma ativação. Onde ele cabe, dentro do MLP?</p>
+    <div class="options">
+      <button class="option" data-key="a">nas duas camadas — é o padrão do projeto e está correto</button>
+      <button class="option" data-key="b">na primeira, porque ela vem antes da GELU</button>
+      <button class="option" data-key="c">na segunda, porque a entrada dela já passou pela GELU</button>
+      <button class="option" data-key="d">em nenhuma — Kaiming só faz sentido com ReLU</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> O 2 repõe energia <em>já perdida</em>, então pertence à camada que recebe o sinal cortado. A primeira <code>Linear</code> recebe o fluxo residual, que não passou por ativação nenhuma — aplicar o 2 ali dobra a variância. Medido: <code>Var(x)=1 → Var(Z)=2 → Var(Y)=1.84</code>, e o excesso todo veio do primeiro passo. O projeto usa Kaiming nas duas hoje, e isso está anotado como pendência da Etapa 15 (§6).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Você esqueceu a <code>gelu</code> no forward: a camada virou <code>Linear → Linear</code>. Qual teste reprova isso?</p>
+    <div class="options">
+      <button class="option" data-key="a">o gradient check em <code>x</code> e nos quatro parâmetros</button>
+      <button class="option" data-key="b">o teste de formato preservado</button>
+      <button class="option" data-key="c">o teste de independência entre posições</button>
+      <button class="option" data-key="d">a contraprova de linearidade — conferir que <code>f(2x) ≠ 2·f(x)</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> As três primeiras <strong>passam</strong> num MLP sem GELU, e é isso que torna o erro perigoso. O gradient check confere se o backward é a derivada do forward que você escreveu, e um forward linear é perfeitamente derivável. O formato não muda. E a camada continua sendo posição a posição. Só a superposição da Etapa 5 §1, usada como contraprova, separa o caso certo do errado (§8).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Somando as peças, o GPT-2 small dá <code>124.439.808</code> parâmetros. A nossa implementação, com a mesma arquitetura, daria <code>18.432</code> a menos. De onde vem a diferença?</p>
+    <div class="options">
+      <button class="option" data-key="a">do nosso MLP, que não usa <code>b2</code></button>
+      <button class="option" data-key="b">dos vieses <code>b_K</code> e <code>b_V</code>, removidos na Etapa 12 por serem parâmetros mortos</button>
+      <button class="option" data-key="c">do LayerNorm final, que o nosso modelo não tem</button>
+      <button class="option" data-key="d">do embedding posicional, que no nosso caso é calculado e não treinado</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> São <code>2 × 768 = 1.536</code> por bloco, vezes 12 blocos, igual a <code>18.432</code>. A Etapa 12 §8 provou que os dois são mortos: <code>b_K</code> tem gradiente verdadeiro zero, e <code>b_V</code> é redundante com <code>b_O</code>. Menos parâmetros, mesma capacidade. O MLP, esse, bate com o do GPT-2 na casa das unidades: <code>4.722.432</code> (§7).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q15</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Você troca a ordem e passa a somar <code>b1</code> <em>depois</em> da GELU, numa camada recém-construída. Qual teste reprova?</p>
+    <div class="options">
+      <button class="option" data-key="a">a comparação contra a referência em Scala puro</button>
+      <button class="option" data-key="b">o teste de formato e contagem dos parâmetros</button>
+      <button class="option" data-key="c">o gradient check nos quatro parâmetros</button>
+      <button class="option" data-key="d">a comparação de <code>db1</code> contra a fórmula <code>Σ dA ⊙ gelu'(Z)</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Nenhum teste de forward consegue: <code>b1</code> nasce zerado, e somar zero antes ou depois da ativação dá exatamente o mesmo número — as duas versões são a <em>mesma função</em> nesse instante. O gradient check também passa, porque ele confere coerência entre forward e backward, e os dois estão coerentes. O que muda é a regra da cadeia: com o viés no lugar certo <code>db1 = Σ dA ⊙ gelu'(Z)</code>, e com ele depois da ativação <code>db1 = Σ dA</code>. Medido por mutação nesta etapa: a troca passa em 17 testes e falha só neste (§8).</div>
+  </div>
+</div>
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A leitura chave-valor e o limite da largura estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 13-mlp.md e mlp.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>
+
+<footer style="max-width: 760px; margin: 4em auto 0; padding: 1.2em 24px 0; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;">mini-gpt · theory/13-mlp · exercícios</footer>

@@ -1,0 +1,242 @@
+<title>Visão Geral — arquitetura do GPT — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .sheet { max-width: 820px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  .lbl { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .ct { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  /* a classe .ct fixa text-anchor:middle, e CSS vence atributo de apresentação —
+     por isso alinhar à esquerda precisa de uma classe própria, não do atributo. */
+  .ct.start { text-anchor: start; }
+  .ct.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .ct.hot { fill: var(--accent); font-weight: 700; }
+  .ct.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.8; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="ah-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="ah-ghost" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Arquitetura do GPT</h1>
+    <div class="meta">mini-gpt<br>visão geral</div>
+    <div class="sub">Folha 00 · Visão Geral · o mapa do que estamos construindo</div>
+  </div>
+
+  <h2><span class="num">§1</span> O modelo faz uma coisa só, repetidamente</h2>
+  <p>
+    Um modelo de linguagem prevê <strong>o próximo token</strong>. Gerar texto é repetir essa previsão,
+    realimentando cada resultado como entrada da vez seguinte.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 500 230" width="500">
+        <rect x="20" y="30" width="90" height="34" class="cell"></rect><text x="65" y="47" class="ct">"aba"</text>
+        <path d="M110,47 L165,47" class="arrow" marker-end="url(#ah)"></path>
+
+        <rect x="165" y="18" width="110" height="58" class="cell hot2"></rect>
+        <text x="220" y="40" class="ct hot2">modelo</text><text x="220" y="58" class="ct soft">Etapas 9-15</text>
+
+        <path d="M275,47 L330,47" class="arrow" marker-end="url(#ah)"></path>
+
+        <rect x="330" y="14" width="150" height="66" class="cell"></rect>
+        <text x="405" y="28" class="ct soft">a 0.10   b 0.06</text>
+        <text x="405" y="44" class="ct hot">c 0.72</text>
+        <text x="405" y="60" class="ct soft">e 0.04   t 0.08</text>
+        <text x="390" y="94" class="lbl hot" text-anchor="middle">distribuição sobre o vocabulário</text>
+
+        <path d="M405,80 L405,112" class="arrow hot" marker-end="url(#ah-hot)"></path>
+        <rect x="350" y="114" width="110" height="32" class="cell hot"></rect>
+        <text x="405" y="130" class="ct hot">escolhe "c"</text>
+        <text x="405" y="160" class="lbl" text-anchor="middle">Etapa 19</text>
+
+        <path d="M350,130 L120,130 Q60,130 60,90 L60,68" class="arrow hot" marker-end="url(#ah-hot)" fill="none"></path>
+        <rect x="20" y="176" width="90" height="34" class="cell"></rect><text x="65" y="193" class="ct">"abac"</text>
+        <text x="230" y="196" class="lbl hot">o texto cresce, e o ciclo recomeça</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 1</span> Geração autoregressiva. O modelo nunca "escreve uma frase" — ele prevê um token, e a repetição faz o resto. É por isso que prever bem o próximo token exige ter aprendido gramática, fatos e raciocínio.</div>
+  </div>
+
+  <h2><span class="num">§2</span> O caminho de um texto, com os formatos</h2>
+  <p>
+    Um lote de 2 sequências de 4 tokens, com embeddings de dimensão 8 e vocabulário de 5.
+    Repare que os <strong>blocos não mudam o formato</strong> — é isso que permite empilhá-los à vontade.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 520 420" width="520">
+        <text x="120" y="14" class="lbl strong" text-anchor="middle">estágio</text>
+        <text x="330" y="14" class="lbl strong" text-anchor="middle">formato</text>
+        <text x="452" y="14" class="lbl strong" text-anchor="middle">etapa</text>
+
+        <rect x="20" y="24" width="200" height="34" class="cell ghost"></rect>
+        <text x="120" y="41" class="ct soft">texto: "abac", "acat"</text>
+        <text x="330" y="41" class="ct soft">—</text>
+        <text x="452" y="41" class="ct soft">—</text>
+        <path d="M120,58 L120,74" class="arrow" marker-end="url(#ah)"></path>
+        <text x="180" y="70" class="lbl">tokenizar</text>
+
+        <rect x="20" y="76" width="200" height="34" class="cell"></rect>
+        <text x="120" y="93" class="ct">tokens</text>
+        <text x="330" y="93" class="ct hot2">[2, 4]</text>
+        <text x="452" y="93" class="ct soft">7</text>
+        <path d="M120,110 L120,126" class="arrow" marker-end="url(#ah)"></path>
+        <text x="196" y="122" class="lbl">token + posição</text>
+
+        <rect x="20" y="128" width="200" height="34" class="cell hot"></rect>
+        <text x="120" y="145" class="ct hot">vetores</text>
+        <text x="330" y="145" class="ct hot2">[2, 4, 8]</text>
+        <text x="452" y="145" class="ct soft">9</text>
+        <path d="M120,162 L120,178" class="arrow" marker-end="url(#ah)"></path>
+
+        <rect x="20" y="180" width="200" height="42" class="cell hot"></rect>
+        <text x="120" y="195" class="ct hot">bloco 1</text><text x="120" y="211" class="ct soft">atenção + MLP</text>
+        <text x="330" y="201" class="ct hot2">[2, 4, 8]</text>
+        <text x="452" y="201" class="ct soft">10-14</text>
+        <path d="M120,222 L120,238" class="arrow" marker-end="url(#ah)"></path>
+
+        <rect x="20" y="240" width="200" height="42" class="cell hot"></rect>
+        <text x="120" y="255" class="ct hot">bloco 2</text><text x="120" y="271" class="ct soft">atenção + MLP</text>
+        <text x="330" y="261" class="ct hot2">[2, 4, 8]</text>
+        <text x="452" y="261" class="ct soft">10-14</text>
+        <path d="M120,282 L120,298" class="arrow" marker-end="url(#ah)"></path>
+        <text x="192" y="294" class="lbl">projeção final</text>
+
+        <rect x="20" y="300" width="200" height="34" class="cell"></rect>
+        <text x="120" y="317" class="ct">logits</text>
+        <text x="330" y="317" class="ct hot">[2, 4, 5]</text>
+        <text x="452" y="317" class="ct soft">15</text>
+        <path d="M120,334 L120,350" class="arrow" marker-end="url(#ah)"></path>
+        <text x="172" y="346" class="lbl">softmax</text>
+
+        <rect x="20" y="352" width="200" height="34" class="cell hot2"></rect>
+        <text x="120" y="369" class="ct hot2">probabilidades</text>
+        <text x="330" y="369" class="ct hot">[2, 4, 5]</text>
+        <text x="452" y="369" class="ct soft">6</text>
+
+        <path d="M270,145 Q262,220 270,261" class="arrow ghost" fill="none"></path>
+        <text x="288" y="207" class="lbl hot2">8 = dimensão</text>
+        <text x="288" y="220" class="lbl hot2">do embedding</text>
+
+        <path d="M392,317 Q402,343 392,369" class="arrow ghost" fill="none"></path>
+        <text x="410" y="337" class="lbl hot">5 = tamanho</text>
+        <text x="410" y="350" class="lbl hot">do vocabulário</text>
+
+        <text x="260" y="406" class="lbl" text-anchor="middle">a última dimensão muda de significado só na projeção final</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 2</span> A saída <code>[2,4,5]</code> traz 4 distribuições por sequência — uma previsão por <em>posição</em>, não uma por sequência. É por isso que uma janela de 4 tokens rende 4 exemplos de treino.</div>
+  </div>
+
+  <h2><span class="num">§3</span> As 19 etapas, em quatro marcos</h2>
+  <p>
+    As Etapas 1 a 6 não têm nada de específico de modelos de linguagem — é o equivalente a construir
+    o NumPy antes de construir o modelo. Só a partir da 7 o assunto vira GPT.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 520 300" width="520">
+        <rect x="20" y="20" width="480" height="58" class="cell hot2"></rect>
+        <text x="34" y="38" class="lbl hot2">Marco 1 · Etapas 1-6 · módulo scalagrad</text>
+        <text x="34" y="58" class="ct soft start">Tensor · Autograd · Operações · Gradcheck · Ativações · Softmax</text>
+        <text x="34" y="72" class="ct soft start">a fundação matemática — nada aqui é específico de GPT</text>
+
+        <path d="M260,78 L260,94" class="arrow" marker-end="url(#ah)"></path>
+
+        <rect x="20" y="96" width="480" height="72" class="cell hot"></rect>
+        <text x="34" y="114" class="lbl hot">Marco 2 · Etapas 7-15 · módulo gpt</text>
+        <text x="34" y="134" class="ct soft start">Tokenização · Linear · Embedding · LayerNorm · Atenção</text>
+        <text x="34" y="150" class="ct soft start">Multi-Head · MLP · Bloco · Modelo GPT</text>
+        <text x="34" y="164" class="ct soft start">as peças do modelo — a Etapa 11 é o coração</text>
+
+        <path d="M260,168 L260,184" class="arrow" marker-end="url(#ah)"></path>
+
+        <rect x="20" y="186" width="480" height="58" class="cell"></rect>
+        <text x="34" y="204" class="lbl strong">Marco 3 · Etapas 16-18</text>
+        <text x="34" y="224" class="ct soft start">Cross-Entropy · AdamW · Laço de treino</text>
+        <text x="34" y="238" class="ct soft start">onde o modelo finalmente aprende</text>
+
+        <path d="M260,244 L260,260" class="arrow" marker-end="url(#ah)"></path>
+
+        <rect x="20" y="262" width="480" height="30" class="cell ghost"></rect>
+        <text x="34" y="280" class="ct soft start">Marco 4 · Etapa 19 · Geração — onde o modelo escreve texto</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 3</span> Numa configuração pequena — vocabulário 95, embedding 64, contexto 128, 4 blocos — o modelo tem cerca de <strong>220 mil parâmetros</strong>, e 91% deles vivem nos blocos do Marco 2. O GPT-3 tem 175 bilhões, mas nenhuma peça que este material não construa.</div>
+  </div>
+
+  <footer>mini-gpt — visão geral · arquitetura · guia visual</footer>
+</div>

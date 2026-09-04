@@ -1,0 +1,585 @@
+<title>Broadcasting &amp; Unbroadcast — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9;
+    --paper-2: #e2e9f4;
+    --ink: #16324f;
+    --ink-soft: #4b6584;
+    --line: #b9c8e0;
+    --line-strong: #7b93b8;
+    --accent: #a8641a;
+    --accent-soft: #f3ddb8;
+    --accent2: #1f7a84;
+    --accent2-soft: #d3ecec;
+    --ghost: #c3cee2;
+    --plate-bg: #ffffff;
+    --code-bg: #dfe7f4;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540;
+      --paper-2: #0f2d4c;
+      --ink: #e8f1ff;
+      --ink-soft: #9fb6d6;
+      --line: #2c5178;
+      --line-strong: #47749f;
+      --accent: #ffcf6b;
+      --accent-soft: #4a3a17;
+      --accent2: #7fe0d6;
+      --accent2-soft: #113c3d;
+      --ghost: #274a6e;
+      --plate-bg: #0f2c4a;
+      --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540;
+    --paper-2: #0f2d4c;
+    --ink: #e8f1ff;
+    --ink-soft: #9fb6d6;
+    --line: #2c5178;
+    --line-strong: #47749f;
+    --accent: #ffcf6b;
+    --accent-soft: #4a3a17;
+    --accent2: #7fe0d6;
+    --accent2-soft: #113c3d;
+    --ghost: #274a6e;
+    --plate-bg: #0f2c4a;
+    --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9;
+    --paper-2: #e2e9f4;
+    --ink: #16324f;
+    --ink-soft: #4b6584;
+    --line: #b9c8e0;
+    --line-strong: #7b93b8;
+    --accent: #a8641a;
+    --accent-soft: #f3ddb8;
+    --accent2: #1f7a84;
+    --accent2-soft: #d3ecec;
+    --ghost: #c3cee2;
+    --plate-bg: #ffffff;
+    --code-bg: #dfe7f4;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  .mono {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .sheet {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 24px 96px;
+  }
+
+  .titleblock {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 24px;
+    align-items: end;
+    border: 1.5px solid var(--line-strong);
+    background: var(--plate-bg);
+    padding: 18px 22px;
+    margin-bottom: 40px;
+  }
+  .titleblock h1 {
+    margin: 0;
+    font-family: inherit;
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1.5rem;
+    letter-spacing: 0.02em;
+    text-wrap: balance;
+  }
+  .titleblock .sub {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+  .titleblock .meta {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  h2 {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent2);
+    margin: 3.2em 0 0.9em;
+    text-wrap: balance;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6em;
+  }
+  h2 .num {
+    color: var(--ink-soft);
+    opacity: 0.7;
+  }
+  h2::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px dashed var(--line-strong);
+    margin-bottom: 0.35em;
+  }
+
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+
+  .figure {
+    max-width: 100%;
+    margin: 1.6em 0 1.8em;
+    border: 1.5px solid var(--line-strong);
+    background: var(--plate-bg);
+    padding: 18px;
+  }
+  .figure .scroll {
+    overflow-x: auto;
+  }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  .caption .tag {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--accent2);
+    letter-spacing: 0.06em;
+    margin-right: 0.6em;
+  }
+
+  code, .code-inline {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+
+  pre {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 0.84rem;
+    line-height: 1.55;
+  }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+    padding: 10px 16px;
+    margin: 1.4em 0;
+    font-size: 0.95rem;
+  }
+  .callout .tag {
+    display: block;
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 0.35em;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 1.2em 0;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    border-bottom: 1.5px solid var(--line-strong);
+  }
+  td code { white-space: nowrap; }
+
+  .cell-rect { fill: var(--plate-bg); stroke: var(--line-strong); stroke-width: 1.5; }
+  .cell-rect.ghost { fill: none; stroke: var(--ghost); stroke-dasharray: 4 3; }
+  .cell-rect.accent { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell-rect.warm { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 13px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.ghost { fill: var(--ink-soft); }
+  .idx-text { font-family: "JetBrains Mono", monospace; font-size: 10px; fill: var(--ink-soft); text-anchor: middle; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .arrow.hot { stroke: var(--accent2); stroke-width: 1.8; }
+  .arrow.sum { stroke: var(--accent); stroke-width: 1.8; }
+
+  footer {
+    margin-top: 4em;
+    padding-top: 1.2em;
+    border-top: 1.5px solid var(--line-strong);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path>
+    </marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path>
+    </marker>
+    <marker id="arrowhead-sum" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path>
+    </marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+
+  <div class="titleblock">
+    <h1>Broadcasting &amp; Unbroadcast</h1>
+    <div class="meta">mini-gpt<br>núcleo de tensores</div>
+    <div class="sub">Folha 03 · Etapa 3 — Operações Elementares · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> O problema</h2>
+  <p>
+    Duas operações elementares (<code>+</code>, <code>*</code>, ...) exigem, em princípio, que os dois tensores
+    tenham exatamente o mesmo shape — a operação é posição-a-posição. Mas isso obrigaria a duplicar manualmente
+    um vetor de viés toda vez que ele precisasse somar em cada linha de uma matriz. <strong>Broadcasting</strong>
+    é a convenção que evita essa duplicação: um tensor menor é tratado <em>como se</em> estivesse repetido, sem
+    nunca copiar dado de verdade.
+  </p>
+  <p>
+    <strong>Unbroadcast</strong> é o problema espelhado, no <code>backward</code>: se um tensor foi "esticado" no
+    forward, o gradiente que volta está no formato esticado — precisa ser somado de volta pro formato original
+    antes de acumular.
+  </p>
+
+  <h2><span class="num">§2</span> Regra de compatibilidade</h2>
+  <p>
+    Os shapes se alinham <strong>pela direita</strong>. Se um deles tem menos dimensões, o que falta é preenchido
+    com <code>1</code> à esquerda. Depois disso, cada par de dimensões precisa ser <strong>igual</strong> ou
+    <strong>um dos dois ser 1</strong> — nunca os dois diferentes e maiores que 1.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 520 170" width="520">
+        <text x="10" y="20" class="lbl">s1 = (3,)</text>
+        <rect x="300" y="30" width="70" height="40" class="cell-rect ghost"></rect>
+        <text x="335" y="53" class="cell-text ghost">1</text>
+        <rect x="380" y="30" width="70" height="40" class="cell-rect"></rect>
+        <text x="415" y="53" class="cell-text">3</text>
+        <text x="300" y="18" class="idx-text">padding →</text>
+
+        <text x="10" y="95" class="lbl">s2 = (2, 3)</text>
+        <rect x="300" y="105" width="70" height="40" class="cell-rect"></rect>
+        <text x="335" y="128" class="cell-text">2</text>
+        <rect x="380" y="105" width="70" height="40" class="cell-rect"></rect>
+        <text x="415" y="128" class="cell-text">3</text>
+
+        <line x1="335" y1="70" x2="335" y2="105" class="arrow" marker-end="url(#arrowhead)"></line>
+        <line x1="415" y1="70" x2="415" y2="105" class="arrow hot" marker-end="url(#arrowhead-hot)"></line>
+
+        <text x="300" y="150" class="lbl strong">1 vs 2 → ok (1 estica)</text>
+        <text x="380" y="163" class="lbl strong" fill="var(--accent2)">3 = 3 → ok</text>
+        <text x="10" y="150" class="lbl">resultado broadcastado:</text>
+        <rect x="10" y="118" width="0" height="0"></rect>
+        <text x="10" y="163" class="lbl strong">shape = (2, 3)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 1</span>Alinhamento pela direita: <code>s1=(3,)</code> vira <code>(1,3)</code> por padding; comparado com <code>s2=(2,3)</code>, a dimensão <code>1</code> estica pra <code>2</code>, a dimensão <code>3</code> já bate.</div>
+  </div>
+
+  <div class="callout">
+    <span class="tag">No código</span>
+    <code>Shape.broadcast(shape1, shape2)</code> (<code class="code-inline">core/Shape.scala</code>) faz exatamente essa validação e devolve o shape resultante — usado tanto pelo forward (<code>broadcastTo</code>) quanto indiretamente pelo <code>unbroadcast</code>.
+  </div>
+
+  <h2><span class="num">§3</span> Esticar sem copiar: a view de stride 0</h2>
+  <p>
+    Um <code>Tensor</code> não guarda só o array de dados — guarda também <strong>strides</strong>: quanto pular
+    em <code>data</code> pra avançar cada dimensão em 1. O truque do broadcasting é simples: se uma dimensão tem
+    stride <code>0</code>, "andar" nela não muda a posição de memória lida — ou seja, qualquer índice naquela
+    dimensão cai no <em>mesmo</em> lugar.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 470 260" width="470">
+        <text x="10" y="18" class="lbl">view lógica (2, 3) · strides (0, 1)</text>
+
+        <text x="0" y="52" class="lbl">linha 0</text>
+        <rect x="70" y="32" width="60" height="40" class="cell-rect accent"></rect>
+        <text x="100" y="55" class="cell-text">10</text>
+        <rect x="140" y="32" width="60" height="40" class="cell-rect accent"></rect>
+        <text x="170" y="55" class="cell-text">20</text>
+        <rect x="210" y="32" width="60" height="40" class="cell-rect accent"></rect>
+        <text x="240" y="55" class="cell-text">30</text>
+
+        <text x="0" y="112" class="lbl">linha 1</text>
+        <rect x="70" y="92" width="60" height="40" class="cell-rect accent"></rect>
+        <text x="100" y="115" class="cell-text">10</text>
+        <rect x="140" y="92" width="60" height="40" class="cell-rect accent"></rect>
+        <text x="170" y="115" class="cell-text">20</text>
+        <rect x="210" y="92" width="60" height="40" class="cell-rect accent"></rect>
+        <text x="240" y="115" class="cell-text">30</text>
+
+        <text x="0" y="200" class="lbl strong">data físico</text>
+        <rect x="70" y="180" width="60" height="40" class="cell-rect"></rect>
+        <text x="100" y="203" class="cell-text">10</text>
+        <text x="100" y="234" class="idx-text">[0]</text>
+        <rect x="140" y="180" width="60" height="40" class="cell-rect"></rect>
+        <text x="170" y="203" class="cell-text">20</text>
+        <text x="170" y="234" class="idx-text">[1]</text>
+        <rect x="210" y="180" width="60" height="40" class="cell-rect"></rect>
+        <text x="240" y="203" class="cell-text">30</text>
+        <text x="240" y="234" class="idx-text">[2]</text>
+
+        <path d="M100,72 Q100,145 100,180" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M170,72 Q170,145 170,180" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M240,72 Q240,145 240,180" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M100,132 L100,180" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M170,132 L170,180" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M240,132 L240,180" class="arrow" marker-end="url(#arrowhead)"></path>
+
+        <text x="300" y="52" class="lbl" fill="var(--accent2)">stride linha = 0</text>
+        <text x="300" y="112" class="lbl">stride linha = 0</text>
+        <text x="300" y="203" class="lbl">stride coluna = 1</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 2</span><code>data = [10, 20, 30]</code> tem só 3 elementos, mas a view lógica "parece" ter 6 (shape <code>(2,3)</code>). Com <code>stride linha = 0</code>, <code>index(0,j)</code> e <code>index(1,j)</code> caem na mesma posição de <code>data</code> — as duas linhas leem exatamente o mesmo array.</div>
+  </div>
+
+  <p>
+    Isso quebra o invariante mais simples que valia até a Etapa 2 (<code>data.length == shape.product</code>),
+    que só era verdade porque <code>reshape</code>/<code>transpose</code> nunca mudam a quantidade total de
+    elementos. O invariante atual do <code>Tensor</code> é mais geral: o maior índice de memória alcançável por
+    <code>shape</code> + <code>strides</code> precisa caber em <code>data</code> —
+    <code>Σᵢ (shape[i]-1)·strides[i] &lt; data.length</code> — o que aceita naturalmente strides <code>0</code>.
+  </p>
+
+  <h2><span class="num">§3.1</span> <code class="code-inline">broadcastTo</code>: os dois casos</h2>
+  <p>
+    Depois de alinhar os ranks (padding de <code>1</code> à esquerda quando os ranks diferem), toda dimensão que
+    é <code>1</code> no shape original — seja ela nova (do padding) ou pré-existente — ganha <strong>tamanho do
+    shape alvo</strong> e <strong>stride 0</strong>. As outras dimensões mantêm shape e stride como estavam.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 620 150" width="620">
+        <text x="10" y="20" class="lbl strong">caso A · dimensão pré-existente de tamanho 1</text>
+        <text x="10" y="45" class="mono lbl">(1, 3)</text>
+        <text x="90" y="45" class="lbl">shape=(1,3) strides=(3,1)</text>
+        <path d="M10,58 L10,70" class="arrow" marker-end="url(#arrowhead)"></path>
+        <text x="10" y="90" class="mono lbl strong" fill="var(--accent2)">(2, 3)</text>
+        <text x="90" y="90" class="lbl">shape=(2,3) strides=(0,1) — tamanho muda 1→2, stride vira 0</text>
+
+        <line x1="0" y1="112" x2="620" y2="112" stroke="var(--line)" stroke-dasharray="3 3"></line>
+
+        <text x="10" y="130" class="lbl strong">caso B · dimensão nova (padding de rank)</text>
+        <text x="330" y="45" class="mono lbl">(3,)</text>
+        <text x="380" y="45" class="lbl">shape=(3,) strides=(1,)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 3</span>Caso A: <code>(1,3)→(2,3)</code>, sem mudança de rank. Caso B (abaixo, texto): <code>(3,)</code> primeiro vira <code>(1,3)</code> via padding (stride da dimensão nova já nasce <code>0</code>), e então segue pro mesmo caso A — os dois casos convergem pro mesmo resultado final <code>shape=(2,3) strides=(0,1)</code>.</div>
+  </div>
+
+  <pre>Tensor.make([10,20,30], (1,3)).broadcastTo((2,3))
+  → shape=(2,3)  strides=(0,1)          // caso A
+
+Tensor.make([1,2,3], (3,)).broadcastTo((2,3))
+  → pad rank: shape=(1,3) strides=(0,1)  // dimensão nova, stride já 0
+  → shape=(2,3) strides=(0,1)            // caso A de novo</pre>
+
+  <h2><span class="num">§4</span> Backward: por que reuso exige soma</h2>
+  <p>
+    Quando um tensor <code>v</code> é lido em mais de um lugar do grafo (aqui: em cada "cópia" broadcastada),
+    a regra da cadeia multivariável diz que o gradiente de <code>v</code> é a <strong>soma</strong> das
+    contribuições de cada uso — exatamente o mesmo princípio já usado quando um tensor é reaproveitado em
+    operações normais (Etapa 2), só que aqui os "usos" são as posições broadcastadas.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 150" width="460">
+        <rect x="190" y="15" width="80" height="40" class="cell-rect warm"></rect>
+        <text x="230" y="38" class="cell-text">v</text>
+
+        <rect x="30" y="95" width="90" height="40" class="cell-rect"></rect>
+        <text x="75" y="118" class="cell-text">uso 0</text>
+        <rect x="340" y="95" width="90" height="40" class="cell-rect"></rect>
+        <text x="385" y="118" class="cell-text">uso 1</text>
+
+        <path d="M75,95 Q120,60 205,55" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <path d="M385,95 Q340,60 255,55" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+
+        <text x="230" y="90" class="lbl strong" text-anchor="middle" fill="var(--accent)">v.grad += grad(uso0) + grad(uso1)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 4</span><code>v</code> foi lido duas vezes (broadcastado em duas posições) — o gradiente que chega em <code>v</code> soma as duas setas, não fica só com a última.</div>
+  </div>
+
+  <h2><span class="num">§5</span> <code class="code-inline">unbroadcast</code>: desfazendo no gradiente</h2>
+  <p>
+    <code>unbroadcast(grad, gradShape, targetShape)</code> é o inverso de <code>broadcastTo</code>: recebe o
+    gradiente no shape <em>esticado</em> (o da saída) e devolve um gradiente no shape <em>original</em>, menor —
+    somando toda posição que, no forward, veio da mesma célula de memória.
+  </p>
+  <p>Existem dois casos, e eles terminam de jeitos diferentes:</p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 560 230" width="560">
+        <text x="10" y="18" class="lbl strong">caso 1 · dimensão nova (padding) → soma e a dimensão some</text>
+        <text x="10" y="40" class="lbl">dC, shape (3,4)</text>
+
+        <g>
+          <!-- 3 rows x 4 cols grid, small cells -->
+          <rect x="10" y="50" width="40" height="30" class="cell-rect"></rect><text x="30" y="68" class="cell-text">1</text>
+          <rect x="55" y="50" width="40" height="30" class="cell-rect accent"></rect><text x="75" y="68" class="cell-text">1</text>
+          <rect x="100" y="50" width="40" height="30" class="cell-rect"></rect><text x="120" y="68" class="cell-text">1</text>
+          <rect x="145" y="50" width="40" height="30" class="cell-rect"></rect><text x="165" y="68" class="cell-text">1</text>
+
+          <rect x="10" y="85" width="40" height="30" class="cell-rect"></rect><text x="30" y="103" class="cell-text">1</text>
+          <rect x="55" y="85" width="40" height="30" class="cell-rect accent"></rect><text x="75" y="103" class="cell-text">1</text>
+          <rect x="100" y="85" width="40" height="30" class="cell-rect"></rect><text x="120" y="103" class="cell-text">1</text>
+          <rect x="145" y="85" width="40" height="30" class="cell-rect"></rect><text x="165" y="103" class="cell-text">1</text>
+
+          <rect x="10" y="120" width="40" height="30" class="cell-rect"></rect><text x="30" y="138" class="cell-text">1</text>
+          <rect x="55" y="120" width="40" height="30" class="cell-rect accent"></rect><text x="75" y="138" class="cell-text">1</text>
+          <rect x="100" y="120" width="40" height="30" class="cell-rect"></rect><text x="120" y="138" class="cell-text">1</text>
+          <rect x="145" y="120" width="40" height="30" class="cell-rect"></rect><text x="165" y="138" class="cell-text">1</text>
+        </g>
+
+        <path d="M75,80 L75,180" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <path d="M75,115 L75,180" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <path d="M75,150 L75,180" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+
+        <rect x="55" y="185" width="40" height="30" class="cell-rect warm"></rect>
+        <text x="75" y="203" class="cell-text">3</text>
+        <text x="10" y="205" class="lbl">v.grad[1] = 1+1+1</text>
+
+        <text x="250" y="18" class="lbl strong">caso 2 · dimensão já era 1 → soma e mantém</text>
+        <text x="250" y="40" class="lbl">dC, linha 1 em destaque</text>
+        <rect x="250" y="85" width="35" height="30" class="cell-rect accent"></rect><text x="267" y="103" class="cell-text">1</text>
+        <rect x="288" y="85" width="35" height="30" class="cell-rect accent"></rect><text x="305" y="103" class="cell-text">1</text>
+        <rect x="326" y="85" width="35" height="30" class="cell-rect accent"></rect><text x="343" y="103" class="cell-text">1</text>
+        <rect x="364" y="85" width="35" height="30" class="cell-rect accent"></rect><text x="381" y="103" class="cell-text">1</text>
+
+        <path d="M267,115 Q267,150 435,150" class="arrow sum"></path>
+        <path d="M305,115 Q305,140 435,150" class="arrow sum"></path>
+        <path d="M343,115 Q343,130 435,150" class="arrow sum"></path>
+        <path d="M381,115 L435,150" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+
+        <rect x="440" y="135" width="35" height="30" class="cell-rect warm"></rect>
+        <text x="457" y="153" class="cell-text">4</text>
+        <text x="250" y="200" class="lbl">b.grad[1,0] = 1+1+1+1</text>
+        <text x="250" y="216" class="lbl">shape continua (3,1), não vira (3,)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 5</span><strong>Esquerda:</strong> <code>M(3,4)+v(4,)</code> — coluna inteira soma numa posição de <code>v.grad</code>; a dimensão de linhas não existia em <code>v</code>, então some (<em>squeeze</em>). <strong>Direita:</strong> <code>M(3,4)+b(3,1)</code> — linha inteira soma numa posição de <code>b.grad</code>; a dimensão de colunas já existia em <code>b</code> com tamanho 1, então permanece (<em>keepdim</em>).</div>
+  </div>
+
+  <div class="callout">
+    <span class="tag">A receita, em código</span>
+    Pra cada índice linear <code>i</code> de <code>grad</code>: <code>gradShape.unravelIndex(i)</code> desenrola
+    o multi-índice; alinha <code>targetShape</code> ao rank de <code>gradShape</code> (mesmo padding do
+    <code>broadcastTo</code>); zera a coordenada em toda dimensão onde o shape alinhado é <code>1</code>;
+    <code>targetShape.index(coords*)</code> reindexação de volta; <code>result.accumulate(essaPosição, grad(i))</code>.
+  </div>
+
+  <h2><span class="num">§6</span> O pipeline completo dentro do <code class="code-inline">add</code></h2>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 700 260" width="700">
+        <text x="10" y="24" class="lbl strong" fill="var(--accent2)">FORWARD</text>
+
+        <rect x="10" y="35" width="120" height="40" class="cell-rect"></rect><text x="70" y="59" class="cell-text mono" style="font-size:12px">t1, t2</text>
+        <path d="M130,55 L170,55" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <rect x="170" y="35" width="150" height="40" class="cell-rect accent"></rect><text x="245" y="59" class="cell-text" style="font-size:12px">Shape.broadcast</text>
+        <path d="M320,55 L360,55" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <rect x="360" y="35" width="150" height="40" class="cell-rect accent"></rect><text x="435" y="59" class="cell-text" style="font-size:12px">t1B, t2B</text>
+        <text x="435" y="30" class="idx-text">(.broadcastTo)</text>
+        <path d="M510,55 L550,55" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <rect x="550" y="35" width="140" height="40" class="cell-rect warm"></rect><text x="620" y="53" class="cell-text" style="font-size:11px">data(i) =</text><text x="620" y="68" class="cell-text" style="font-size:10px">t1B.get + t2B.get</text>
+
+        <line x1="10" y1="95" x2="690" y2="95" stroke="var(--line)" stroke-dasharray="3 3"></line>
+
+        <text x="10" y="125" class="lbl strong" fill="var(--accent)">BACKWARD</text>
+
+        <rect x="10" y="136" width="110" height="40" class="cell-rect"></rect><text x="65" y="160" class="cell-text" style="font-size:12px">grad</text>
+        <text x="65" y="188" class="idx-text">(shape da saída)</text>
+        <path d="M120,156 L160,156" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+
+        <rect x="160" y="136" width="170" height="40" class="cell-rect warm"></rect><text x="245" y="150" class="cell-text" style="font-size:10px">unbroadcast</text><text x="245" y="164" class="cell-text" style="font-size:9px">(·, shape, t1.shape)</text>
+        <path d="M330,156 L370,156" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <rect x="370" y="136" width="90" height="40" class="cell-rect"></rect><text x="415" y="160" class="cell-text" style="font-size:12px">dt1</text>
+        <path d="M460,156 L500,156" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <rect x="500" y="136" width="190" height="40" class="cell-rect accent"></rect><text x="595" y="160" class="cell-text" style="font-size:11px">t1.gradient.accumulate</text>
+
+        <rect x="160" y="196" width="170" height="40" class="cell-rect warm"></rect><text x="245" y="210" class="cell-text" style="font-size:10px">unbroadcast</text><text x="245" y="224" class="cell-text" style="font-size:9px">(·, shape, t2.shape)</text>
+        <path d="M330,216 L370,216" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <rect x="370" y="196" width="90" height="40" class="cell-rect"></rect><text x="415" y="220" class="cell-text" style="font-size:12px">dt2</text>
+        <path d="M460,216 L500,216" class="arrow sum" marker-end="url(#arrowhead-sum)"></path>
+        <rect x="500" y="196" width="190" height="40" class="cell-rect accent"></rect><text x="595" y="220" class="cell-text" style="font-size:11px">t2.gradient.accumulate</text>
+
+        <path d="M65,176 L65,196 L160,216" class="arrow sum"></path>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 6</span>O caminho de <code>+</code> de ponta a ponta: forward calcula o shape de saída e lê cada operando pela sua view broadcastada; backward desfaz o broadcast <strong>separadamente</strong> pra cada operando antes de acumular — <code>dt1</code> e <code>dt2</code> têm tamanhos diferentes entre si (o de <code>t1.shape</code> e o de <code>t2.shape</code>), nunca o tamanho da saída.</div>
+  </div>
+
+  <h2><span class="num">§7</span> Referência rápida</h2>
+  <table>
+    <tr><th>Função</th><th>O que faz</th><th>Onde mora</th></tr>
+    <tr><td><code>Shape.broadcast(s1, s2)</code></td><td>Alinha pela direita, valida compatibilidade, devolve o shape resultante.</td><td><code>core/Shape.scala</code></td></tr>
+    <tr><td><code>tensor.broadcastTo(shape)</code></td><td>Devolve uma view do tensor no shape maior — mesmo <code>data</code>, strides <code>0</code> nas dimensões esticadas.</td><td><code>core/Tensor.scala</code></td></tr>
+    <tr><td><code>shape.unravelIndex(i)</code> / <code>shape.index(dims*)</code></td><td>Inversos um do outro: índice linear ↔ multi-índice, via strides canônicas.</td><td><code>core/Shape.scala</code></td></tr>
+    <tr><td><code>Broadcast.unbroadcast(grad, gradShape, targetShape)</code></td><td>Soma o gradiente esticado de volta pro shape original, elemento a elemento.</td><td><code>ops/BroadcastOps.scala</code></td></tr>
+  </table>
+
+  <footer>mini-gpt — etapa 3 · operações elementares com gradiente</footer>
+</div>

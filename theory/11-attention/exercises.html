@@ -1,0 +1,367 @@
+<title>Exercícios — Etapa 11: Atenção — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Atenção</h1>
+    <div class="meta">mini-gpt<br>um token olha<br>para os outros</div>
+    <div class="sub">Etapa 11 — Scaled Dot-Product Attention · 14 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="11-attention.md">11-attention.md</a> e <a href="attention.html">attention.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que a atenção calcula para cada posição da sequência?</p>
+    <div class="options">
+      <button class="option" data-key="a">uma transformação linear do vetor daquela posição, isolada das outras</button>
+      <button class="option" data-key="b">uma média ponderada dos vetores das outras posições, com pesos que saem do próprio conteúdo</button>
+      <button class="option" data-key="c">uma média simples de todas as posições, com pesos iguais</button>
+      <button class="option" data-key="d">a normalização do vetor daquela posição, como no LayerNorm</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A opção A descreve o <code>Linear</code> da Etapa 8, e a D o LayerNorm da Etapa 10 — as duas processam cada posição sozinha. O que distingue a atenção é misturar posições com pesos calculados, não fixos (§1 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que não usar <code>xᵢ · xⱼ</code> direto como score, dispensando <code>W_Q</code> e <code>W_K</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque o produto interno de dois vetores quaisquer é sempre negativo</button>
+      <button class="option" data-key="b">porque <code>xᵢ · xⱼ</code> não é derivável, e o autograd não passaria por ele</button>
+      <button class="option" data-key="c">porque o custo em tempo seria maior que o das duas projeções</button>
+      <button class="option" data-key="d">porque seria simétrico, e a diagonal <code>xᵢ · xᵢ</code> seria sempre o maior valor da linha</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Os dois defeitos são estruturais. A simetria força "A olha para B" a ser igual a "B olha para A", e a diagonal máxima faria todo token olhar principalmente para si mesmo (§2 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Com <code>Q</code> e <code>K</code> de formato <code>[B, T, dHead]</code>, qual o formato de <code>Q · Kᵀ</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[B, T, dHead]</code> — o mesmo das entradas</button>
+      <button class="option" data-key="b"><code>[B, dHead, dHead]</code></button>
+      <button class="option" data-key="c"><code>[B, T, T]</code> — um score por par de posições</button>
+      <button class="option" data-key="d"><code>[B, T]</code> — um score por posição</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A transposta deixa <code>K</code> em <code>[B, dHead, T]</code>, e a dimensão interna <code>dHead</code> some no produto. Sobram os <code>T²</code> pares, que são a memória e o tempo que a atenção custa (§3 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que a máscara causal impede?</p>
+    <div class="options">
+      <button class="option" data-key="a">que a posição <code>i</code> use informação de qualquer posição <code>j > i</code></button>
+      <button class="option" data-key="b">que um token olhe para si mesmo</button>
+      <button class="option" data-key="c">que os pesos de atenção fiquem negativos</button>
+      <button class="option" data-key="d">que a soma dos pesos de uma linha passe de 1</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Sem isso, a resposta que o modelo deve prever já está na entrada, e ele aprende a copiá-la. A perda de treino cai e a geração não funciona, porque na hora de gerar o futuro ainda não existe (§5 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">A divisão dos scores é por <code>√dHead</code>, e não por <code>dHead</code>. Por quê?</p>
+    <div class="options">
+      <button class="option" data-key="a">por convenção do artigo original; qualquer divisor constante daria o mesmo resultado</button>
+      <button class="option" data-key="b">porque <code>dHead</code> deixaria os scores grandes demais, e o softmax saturaria</button>
+      <button class="option" data-key="c">porque o que cresce com o tamanho do vetor é o desvio padrão do produto interno, que vale <code>√dHead</code></button>
+      <button class="option" data-key="d">porque <code>√dHead</code> é sempre inteiro, e <code>dHead</code> nem sempre é</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A variância do produto interno de vetores com variância 1 vale <code>dHead</code>, então o desvio é a raiz disso. Dividir por <code>dHead</code> erraria para o outro lado: esmagaria as diferenças e o softmax devolveria pesos quase uniformes (§4 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Alguém aplica o softmax primeiro e só depois zera as posições futuras. O que acontece?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada — o resultado é idêntico, já que as posições zeradas não entram na saída</button>
+      <button class="option" data-key="b">as linhas deixam de somar 1, cada uma por um fator diferente, e a saída sai encolhida</button>
+      <button class="option" data-key="c">os pesos ficam negativos nas posições permitidas</button>
+      <button class="option" data-key="d">o forward fica certo, mas o backward passa gradiente para o futuro</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O softmax normaliza pelo que existia quando ele rodou. Medido no exemplo do capítulo, as linhas somam 0.446, 0.903 e 1.000 — a última fica intacta porque nada é mascarado nela, o que ajuda o defeito a escapar dos testes (§5 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">O softmax da atenção é aplicado na última dimensão de <code>[B, T, T]</code>. O que somaria 1 se ele fosse aplicado na penúltima?</p>
+    <div class="options">
+      <button class="option" data-key="a">cada linha, exatamente como antes — as duas dimensões valem <code>T</code>, então dá no mesmo</button>
+      <button class="option" data-key="b">cada exemplo do lote</button>
+      <button class="option" data-key="c">a matriz inteira de pesos</button>
+      <button class="option" data-key="d">cada coluna — a distribuição seria "quem olha para <code>j</code>", que não é uma pergunta com resposta única</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> As duas dimensões têm o mesmo tamanho, então nenhum erro de formato apareceria — é justamente o tipo de bug silencioso que a §8 alerta. A linha responde "como <code>i</code> divide a atenção dele"; a coluna não responde pergunta nenhuma (§6 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que o <em>value</em> precisa de uma projeção própria, em vez de reusar a <em>key</em>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque o que decide <strong>quanto</strong> olhar não precisa ser o que é <strong>transportado</strong></button>
+      <button class="option" data-key="b">porque a key tem formato diferente do value</button>
+      <button class="option" data-key="c">porque reusar a key faria os pesos deixarem de somar 1</button>
+      <button class="option" data-key="d">porque o backward não conseguiria acumular gradiente num tensor usado duas vezes</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> A key pode carregar "sou um verbo no passado", que serve para ser encontrado, enquanto o value carrega o significado do verbo. A opção D descreve algo que o autograd faz sem problema desde a Etapa 2 (§2 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Numa atenção causal correta, quanto vale a saída da primeira posição?</p>
+    <div class="options">
+      <button class="option" data-key="a">a média de todos os values da sequência</button>
+      <button class="option" data-key="b">zero, porque não há nada anterior para olhar</button>
+      <button class="option" data-key="c">depende dos scores — não dá para saber sem calcular</button>
+      <button class="option" data-key="d">exatamente <code>v₀</code>, porque o único peso permitido tem que valer 1</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> A primeira linha tem uma só posição liberada, então o softmax dela é <code>[1, 0, 0]</code> quaisquer que sejam os scores. Isso dá um teste sem tolerância: se <code>y₀ ≠ v₀</code>, algo está errado na máscara ou na ordem (§5 e §8 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">No backward, <code>dQ = dS · K</code> mas <code>dK = dSᵀ · Q</code>. De onde vem a transposta?</p>
+    <div class="options">
+      <button class="option" data-key="a">de uma convenção de notação; as duas fórmulas são equivalentes</button>
+      <button class="option" data-key="b">de que <code>kⱼ</code> aparece na coluna <code>j</code> inteira de <code>S</code>, enquanto <code>qᵢ</code> aparece só na linha <code>i</code></button>
+      <button class="option" data-key="c">de que <code>K</code> foi transposta no forward, e o backward desfaz isso</button>
+      <button class="option" data-key="d">de que <code>dS</code> é simétrica, então tanto faz transpor ou não</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O gradiente de um tensor recolhe todos os lugares onde ele foi usado no forward. Cada key foi comparada com todas as queries, então a soma percorre a coluna. A opção C está na direção certa mas troca a causa pelo sintoma; a D é falsa, <code>dS</code> não é simétrica (§7 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Depurando o backward, você vê <code>dP</code> com valor <code>1.5</code> numa posição mascarada. Isso é vazamento?</p>
+    <div class="options">
+      <button class="option" data-key="a">sim — qualquer valor não nulo numa posição futura indica que a máscara falhou</button>
+      <button class="option" data-key="b">sim, mas só se o forward também tiver peso não nulo ali</button>
+      <button class="option" data-key="c">não — <code>dP = dY · Vᵀ</code> não conhece a máscara; o bloqueio vem do passo seguinte, quando o backward do softmax multiplica por <code>pᵢⱼ = 0</code></button>
+      <button class="option" data-key="d">não, porque <code>dP</code> nunca chega a ser usado no cálculo de <code>dQ</code> e <code>dK</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> O tensor a inspecionar é <code>dS</code>, não <code>dP</code>: é lá que o triângulo superior tem que ser exatamente zero. A opção D é falsa — <code>dP</code> é exatamente a entrada do backward do softmax (§7 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que <code>P.sum</code> não serve como perda do gradient check?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque essa soma vale <code>T</code> sempre — é uma função constante, e o veredito do check vira ruído contra zero</button>
+      <button class="option" data-key="b">porque <code>P</code> tem formato <code>[B, T, T]</code>, e o <code>Gradcheck</code> só aceita rank 2</button>
+      <button class="option" data-key="c">porque a soma incluiria as posições mascaradas, contaminando o resultado com <code>-inf</code></button>
+      <button class="option" data-key="d">porque o gradiente numérico de uma soma é caro demais de calcular</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Cada linha de <code>P</code> soma 1, então a soma total é o número de linhas, aconteça o que acontecer com a entrada. A mesma degenerescência já foi medida no softmax da Etapa 6 e no LayerNorm da Etapa 10 §6. A saída é multiplicar por pesos distintos antes de somar (§8 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">No exemplo do capítulo, a primeira linha de <code>dQ</code> é exatamente <code>[0, 0]</code>:</p>
+    <div class="options">
+      <button class="option" data-key="a">é um bug — todo parâmetro usado no forward tem que receber gradiente</button>
+      <button class="option" data-key="b">é efeito do <code>-inf</code>, que produz <code>0 · inf</code> e zera a linha por acidente</button>
+      <button class="option" data-key="c">é consequência de <code>q₀</code> ter norma menor que as outras queries</button>
+      <button class="option" data-key="d">é correto — os pesos daquela linha valem <code>[1, 0, 0]</code> quaisquer que sejam os scores, então a saída não depende de <code>q₀</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Derivada zero é a resposta certa quando a saída realmente não depende da entrada. Numa sequência longa isso vale só para a primeira posição; as demais têm mais de um peso em disputa. Vale notar que <code>q₀</code> continua recebendo gradiente pelas <em>colunas</em>, via <code>dK</code> — o que zera é a contribuição pela linha dele (§5 e §7 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Uma implementação da atenção passa no gradient check em <code>Q</code>, <code>K</code> e <code>V</code>, com erro relativo abaixo de <code>1e-9</code>. O que ainda pode estar errado?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada de relevante — gradient check verde cobre forward e backward</button>
+      <button class="option" data-key="b">o forward inteiro, inclusive a máscara: o check só compara backward com forward, e deriva um forward errado com a mesma precisão</button>
+      <button class="option" data-key="c">só a inicialização dos pesos, que o check não enxerga</button>
+      <button class="option" data-key="d">só o desempenho, já que o check não mede tempo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Foi exatamente o que a mutação da Etapa 10 mostrou: com o forward alterado, os gradient checks continuaram passando, e corretamente. Quem pega forward errado é referência independente ou propriedade estrutural — aqui, o teste de causalidade, <code>y₀ = v₀</code>, as linhas somando 1 e o envelope convexo da §1 (§8 do <code>.md</code>).</div>
+  </div>
+
+  <footer>mini-gpt — etapa 11 · scaled dot-product attention · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A ordem entre máscara e softmax e o caminho do backward estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 11-attention.md e attention.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

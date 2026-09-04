@@ -1,0 +1,164 @@
+<title>Funções de Ativação — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --purple: #6a3fa0; --purple-soft: #e6ddf4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --purple: #c9a8ff; --purple-soft: #322049;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --purple: #c9a8ff; --purple-soft: #322049;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --purple: #6a3fa0; --purple-soft: #e6ddf4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 1.2em 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1.5px solid var(--line-strong); }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .axis { stroke: var(--line-strong); stroke-width: 1.2; }
+  .grid-line { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.6; }
+  .curve-a { fill: none; stroke: var(--accent); stroke-width: 2.2; }
+  .curve-b { fill: none; stroke: var(--accent2); stroke-width: 2.2; }
+  .dot { fill: var(--plate-bg); stroke-width: 1.5; }
+  .legend-swatch { }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Funções de Ativação</h1>
+    <div class="meta">mini-gpt<br>não-linearidades</div>
+    <div class="sub">Folha 01 · Etapa 5 — Ativações · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> ReLU vs. GELU: como cada uma trata a região negativa</h2>
+  <p>
+    <code style="color:var(--accent)">■ ReLU</code> corta tudo abaixo de zero num plano reto — qualquer neurônio que
+    caia ali fica sem gradiente, permanentemente. <code style="color:var(--accent2)">■ GELU</code> segue a curva de
+    perto pra <code>x</code> grande, mas na região negativa cai suavemente até perto de zero, sem nunca ficar
+    completamente "morta".
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 240" width="480">
+        <line x1="40" y1="20" x2="40" y2="220" class="axis"></line>
+        <line x1="40" y1="186" x2="440" y2="186" class="axis"></line>
+        <line x1="106.7" y1="20" x2="106.7" y2="220" class="grid-line"></line>
+        <line x1="173.3" y1="20" x2="173.3" y2="220" class="grid-line"></line>
+        <line x1="306.7" y1="20" x2="306.7" y2="220" class="grid-line"></line>
+        <line x1="373.3" y1="20" x2="373.3" y2="220" class="grid-line"></line>
+
+        <text x="40" y="234" class="lbl" text-anchor="middle">-3</text>
+        <text x="173.3" y="234" class="lbl" text-anchor="middle">-1</text>
+        <text x="240" y="234" class="lbl" text-anchor="middle">0</text>
+        <text x="306.7" y="234" class="lbl" text-anchor="middle">1</text>
+        <text x="440" y="234" class="lbl" text-anchor="middle">3</text>
+
+        <polyline points="40,186 106.7,186 173.3,186 240,186 306.7,137 373.3,88 440,40" class="curve-a"></polyline>
+        <polyline points="40,186 106.7,188 173.3,193 240,186 306.7,145 373.3,91 440,40" class="curve-b"></polyline>
+
+        <circle cx="240" cy="186" r="3.5" class="dot" stroke="var(--accent2)"></circle>
+        <text x="248" y="200" class="lbl" fill="var(--accent2)">gelu(0)=0, mas a curva já vem subindo suave antes disso</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 1</span>Note o "vale" raso da GELU logo abaixo de <code>x=0</code> (ela desce um pouco antes de subir) — é a atenuação suave que evita o corte abrupto da ReLU. Valores: <code>relu(-1)=0</code> vs. <code>gelu(-1)≈-0.159</code>; ambas convergem pra praticamente a mesma reta a partir de <code>x≈2</code>.</div>
+  </div>
+
+  <h2><span class="num">§2</span> Sigmoid vs. Tanh: duas formas de "S"</h2>
+  <p>
+    As duas saturam nos extremos (gradiente quase zero longe de <code>x=0</code> — o "vanishing gradient" clássico),
+    mas <code style="color:var(--accent)">■ Sigmoid</code> vive em <code>(0,1)</code>, centrada em <code>0.5</code>,
+    enquanto <code style="color:var(--accent2)">■ Tanh</code> vive em <code>(-1,1)</code>, centrada em <code>0</code>
+    (simétrica: <code>tanh(-x) = -tanh(x)</code>).
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 480 240" width="480">
+        <line x1="40" y1="20" x2="40" y2="220" class="axis"></line>
+        <line x1="40" y1="120" x2="440" y2="120" class="axis"></line>
+        <line x1="106.7" y1="20" x2="106.7" y2="220" class="grid-line"></line>
+        <line x1="173.3" y1="20" x2="173.3" y2="220" class="grid-line"></line>
+        <line x1="306.7" y1="20" x2="306.7" y2="220" class="grid-line"></line>
+        <line x1="373.3" y1="20" x2="373.3" y2="220" class="grid-line"></line>
+
+        <text x="40" y="234" class="lbl" text-anchor="middle">-3</text>
+        <text x="173.3" y="234" class="lbl" text-anchor="middle">-1</text>
+        <text x="240" y="234" class="lbl" text-anchor="middle">0</text>
+        <text x="306.7" y="234" class="lbl" text-anchor="middle">1</text>
+        <text x="440" y="234" class="lbl" text-anchor="middle">3</text>
+
+        <polyline points="40,116 106.7,110 173.3,98 240,79 306.7,60 373.3,48 440,42" class="curve-a"></polyline>
+        <polyline points="40,201 106.7,199 173.3,182 240,120 306.7,58 373.3,41 440,39" class="curve-b"></polyline>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 2</span><code>σ(0)=0.5</code> (sigmoid já nasce deslocada pra cima), <code>tanh(0)=0</code> (tanh cruza a origem). A tanh usada dentro da aproximação de GELU (§5 do <code>.md</code>) é essa mesma curva, só que aplicada a <code>u(x) = c·(x+0.044715x³)</code> em vez de <code>x</code> puro.</div>
+  </div>
+
+  <h2><span class="num">§3</span> Referência rápida</h2>
+  <table>
+    <tr><th>Função</th><th>Forward</th><th>Backward</th><th>Faixa</th></tr>
+    <tr><td>ReLU</td><td><code>max(0,x)</code></td><td><code>1</code> se <code>x&gt;0</code>, senão <code>0</code></td><td><code>[0,∞)</code></td></tr>
+    <tr><td>Sigmoid</td><td><code>1/(1+e⁻ˣ)</code></td><td><code>σ(x)·(1-σ(x))</code></td><td><code>(0,1)</code></td></tr>
+    <tr><td>Tanh</td><td><code>(eˣ-e⁻ˣ)/(eˣ+e⁻ˣ)</code></td><td><code>1-tanh(x)²</code></td><td><code>(-1,1)</code></td></tr>
+    <tr><td>GELU</td><td><code>0.5x(1+tanh(u(x)))</code></td><td><code>0.5(1+t)+0.5x(1-t²)u'(x)</code></td><td><code>≈(-0.17,∞)</code></td></tr>
+  </table>
+
+  <footer>mini-gpt — etapa 5 · funções de ativação</footer>
+</div>

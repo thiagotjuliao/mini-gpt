@@ -1,0 +1,342 @@
+<title>Exercícios — Etapa 5: Ativações — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Ativações</h1>
+    <div class="meta">mini-gpt<br>não-linearidades</div>
+    <div class="sub">Etapa 5 — Funções de Ativação · 12 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="05-activations.md">05-activations.md</a> e <a href="activations.html">activations.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que empilhar várias camadas <code>Wx+b</code> sem nenhuma ativação entre elas não aumenta o poder expressivo do modelo?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque pesos <code>W</code> muito grandes causam overflow numérico</button>
+      <button class="option" data-key="b">porque a composição de transformações lineares é sempre outra transformação linear (<code>W₂(W₁x+b₁)+b₂ = W'x+b'</code>) — profundidade sem não-linearidade colapsa numa única camada</button>
+      <button class="option" data-key="c">porque o autograd não consegue derivar através de mais de uma camada linear</button>
+      <button class="option" data-key="d">na verdade aumenta, sim — mais camadas lineares sempre ajudam</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Multiplicar matrizes e somar vieses continua sendo, algebricamente, um único <code>W'x+b'</code> — não importa quantas camadas lineares você empilhe. É por isso que uma ativação não-linear entre as camadas é essencial.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que o princípio da superposição (<code>f(a)+f(b) = f(a+b)</code>) tem a ver com essa etapa?</p>
+    <div class="options">
+      <button class="option" data-key="a">é usado pra otimizar a velocidade do forward pass</button>
+      <button class="option" data-key="b">é uma propriedade só de funções trigonométricas</button>
+      <button class="option" data-key="c">é o teste formal de linearidade — vale pra composições de camadas lineares puras, mas quebra assim que uma ativação como ReLU entra no meio, provando que a rede deixou de ser linear</button>
+      <button class="option" data-key="d">é usado só na Etapa 6 (softmax), não nesta</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> No exemplo do <code>.md</code> (§1), <code>g(-1)+g(1)=6</code> mas <code>g(0)=0</code> — a superposição falha assim que a ReLU entra na composição, confirmando que <code>g</code> não é linear.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que é um "neurônio morto" no contexto de ReLU?</p>
+    <div class="options">
+      <button class="option" data-key="a">um neurônio cuja entrada fica permanentemente em <code>x≤0</code>, fazendo o gradiente ali ser sempre zero — ele nunca mais é atualizado pelo treinamento</button>
+      <button class="option" data-key="b">um neurônio que foi removido do modelo por otimização (pruning)</button>
+      <button class="option" data-key="c">um bug de implementação que faz o forward retornar <code>NaN</code></button>
+      <button class="option" data-key="d">qualquer neurônio cuja saída seja exatamente zero em algum momento do treino</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> A chave é "permanentemente" — um neurônio pode passar por <code>x≤0</code> temporariamente sem problema. O problema é quando ele fica preso ali: como o gradiente é sempre <code>0</code> nessa região, nenhuma atualização de peso consegue tirá-lo de lá.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext"><code>A = [-3, -0.5, 0, 2, 5]</code>, <code>dC = [1, 2, 3, 4, 5]</code>, backward de <code>relu(A)</code>. Qual é <code>dA</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[1, 2, 3, 4, 5]</code> — o gradiente sempre passa direto</button>
+      <button class="option" data-key="b"><code>[0, 0, 3, 4, 5]</code></button>
+      <button class="option" data-key="c"><code>[0, 0, 0, 2, 5]</code> — confundindo com o forward</button>
+      <button class="option" data-key="d"><code>[0, 0, 0, 4, 5]</code> — zero nas posições <code>x≤0</code> (incluindo o zero exato, por convenção), <code>dC</code> passa direto nas demais</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Só os índices 3 (<code>x=2</code>) e 4 (<code>x=5</code>) têm <code>x&gt;0</code>, então só eles deixam o gradiente passar: <code>dA[3]=dC[3]=4</code>, <code>dA[4]=dC[4]=5</code>. O resto (incluindo <code>x=0</code> exato, mesma convenção do <code>clamp</code> na Etapa 3) é zero.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que o backward de sigmoid (<code>σ'(x) = σ(x)·(1-σ(x))</code>) e de tanh (<code>1-tanh(x)²</code>) reusam o valor calculado no forward, em vez de reavaliar a fórmula original?</p>
+    <div class="options">
+      <button class="option" data-key="a">é só uma otimização opcional, sem necessidade real</button>
+      <button class="option" data-key="b">a própria derivada, depois de simplificada algebricamente, acaba expressa em função do valor de saída (<code>σ(x)</code> ou <code>tanh(x)</code>) — mesmo princípio já usado em <code>exp</code> na Etapa 3, onde <code>d/dx(eˣ)=eˣ</code></button>
+      <button class="option" data-key="c">porque recalcular <code>e⁻ˣ</code> no backward causaria overflow</button>
+      <button class="option" data-key="d">porque o Scala não permite chamar a mesma função duas vezes</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> É uma coincidência algébrica feliz (não geral pra qualquer função) que aparece em várias das funções desta etapa: a derivada simplificada usa o próprio valor de saída como ingrediente, evitando recalcular a parte cara (exponencial) de novo no backward.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Qual a principal diferença entre sigmoid e tanh, em termos de faixa de valores?</p>
+    <div class="options">
+      <button class="option" data-key="a">são exatamente a mesma função, só com nomes diferentes</button>
+      <button class="option" data-key="b">sigmoid vive em <code>(-1,1)</code>, tanh em <code>(0,1)</code></button>
+      <button class="option" data-key="c">sigmoid vive em <code>(0,1)</code>, centrada em <code>0.5</code>; tanh vive em <code>(-1,1)</code>, centrada (e simétrica) em <code>0</code></button>
+      <button class="option" data-key="d">só tanh satura nos extremos — sigmoid não</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> <code>σ(0)=0.5</code> (sigmoid nasce deslocada), <code>tanh(0)=0</code> (cruza a origem, e <code>tanh(-x)=-tanh(x)</code>) — ver FIG. 2 do guia visual. As duas saturam nos extremos, então essa parte não distingue as duas.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">No backward de GELU, por que é preciso combinar a regra do <strong>produto</strong> com a regra da <strong>cadeia</strong>, e não só uma das duas?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>gelu(x) = 0.5·x·(1+tanh(u(x)))</code> é ao mesmo tempo um produto de duas partes que dependem de <code>x</code> (<code>x</code> e <code>1+tanh(u(x))</code>) — precisa da regra do produto — e a segunda parte é ela mesma uma composição (<code>tanh</code> aplicado a <code>u(x)</code>) — precisa da regra da cadeia</button>
+      <button class="option" data-key="b">só a regra do produto seria suficiente, a cadeia é opcional</button>
+      <button class="option" data-key="c">GELU não usa nenhuma das duas — é derivada diretamente por definição de limite</button>
+      <button class="option" data-key="d">a regra da cadeia só se aplica a funções trigonométricas como tanh, nunca em conjunto com produto</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>d(gelu)/dx = 0.5·(1+t) + 0.5·x·dt/dx</code> vem da regra do produto (dois fatores que dependem de <code>x</code>); e <code>dt/dx = (1-t²)·u'(x)</code>, dentro desse segundo termo, vem da regra da cadeia (<code>tanh</code> composta com <code>u(x)</code>).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Na derivada de <code>u(x) = c·(x + 0.044715·x³)</code>, por que <code>u'(x) = c·(1 + 0.134145·x²)</code> tem o coeficiente <code>0.134145</code>, e não <code>0.044715</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">é um erro de digitação comum — o coeficiente correto seria <code>0.044715</code> mesmo</button>
+      <button class="option" data-key="b"><code>0.134145</code> é só uma aproximação numérica de <code>0.044715</code></button>
+      <button class="option" data-key="c">os dois coeficientes não têm relação matemática, são constantes independentes escolhidas empiricamente</button>
+      <button class="option" data-key="d">pela regra da potência, <code>d/dx(0.044715·x³) = 3·0.044715·x² = 0.134145·x²</code> — o expoente <code>3</code> "desce" multiplicando o coeficiente</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> <code>0.134145 = 3 × 0.044715</code> — exatamente o fator que a regra da potência (<code>d/dx xⁿ = n·xⁿ⁻¹</code>) introduz ao derivar o termo cúbico. Um erro comum na implementação é esquecer esse fator <code>3</code> e reusar <code>0.044715</code> nos dois lugares.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Segundo o <code>.md</code> (§5), <code>gelu(1) ≈ 0.8411</code>. O que isso significa em relação a <code>relu(1) = 1</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">GELU está errada — deveria dar exatamente <code>1</code> igual ReLU pra qualquer <code>x&gt;0</code></button>
+      <button class="option" data-key="b">GELU não é igual a ReLU nem mesmo pra <code>x&gt;0</code> — ela se aproxima de <code>relu(x)=x</code> conforme <code>x</code> cresce, mas fica sistematicamente um pouco abaixo pra valores pequenos como <code>x=1</code></button>
+      <button class="option" data-key="c">GELU e ReLU só diferem pra <code>x&lt;0</code>, sendo idênticas pra qualquer <code>x≥0</code></button>
+      <button class="option" data-key="d">o valor <code>0.8411</code> é um erro de arredondamento sem significado</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> GELU é uma curva suave que só se <em>aproxima</em> assintoticamente de <code>relu(x)=x</code> pra <code>x</code> grande (ver FIG. 1: as duas curvas praticamente coincidem a partir de <code>x≈2</code>), mas pra valores menores como <code>x=1</code> ainda há uma diferença visível.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Por que o <code>.md</code> recomenda rodar <code>Gradcheck.run</code> (Etapa 4) especificamente em GELU, mais do que nas outras três ativações desta etapa?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque ReLU/Sigmoid/Tanh não têm backward, só GELU tem</button>
+      <button class="option" data-key="b">não há motivo especial — o roadmap pede o mesmo cuidado pra todas igualmente, sem destacar nenhuma</button>
+      <button class="option" data-key="c">o backward de GELU combina regra do produto e regra da cadeia através de vários termos e coeficientes (<code>0.044715</code>, <code>0.134145</code>, <code>c=√(2/π)</code>) — é a derivada mais fácil de errar por um deslize de álgebra que ainda assim "roda" sem erro de compilação ou exceção</button>
+      <button class="option" data-key="d">porque GELU é a única das quatro que não tem uma fórmula fechada, só uma aproximação numérica iterativa</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Quanto mais termos e coeficientes uma derivada tem, mais fácil é errar um sinal, um coeficiente ou esquecer um fator da regra da cadeia — e esses erros não geram exceção, só um número sutilmente errado. É exatamente o cenário onde a verificação numérica automatizada (Etapa 4) vale mais a pena.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Ao rodar <code>Gradcheck.run</code> em <code>relu</code> com um input aleatório, qual posição tem mais chance de dar um erro relativo "falso positivo" (não por bug, mas por limite do próprio método de diferença finita)?</p>
+    <div class="options">
+      <button class="option" data-key="a">uma posição cujo valor caia bem perto de <code>x=0</code> — a diferença central perturba pra <code>x+ε</code> e <code>x-ε</code>, e se isso cruzar o "bico" de <code>relu</code>, o gradiente numérico mistura os dois regimes (dentro e fora), divergindo do valor de convenção (<code>0</code>) usado no analítico</button>
+      <button class="option" data-key="b">qualquer posição com <code>x</code> muito grande e positivo</button>
+      <button class="option" data-key="c">qualquer posição com <code>x</code> muito negativo, longe de zero</button>
+      <button class="option" data-key="d">não existe esse risco — <code>gradCheck</code> é imune a pontos não-diferenciáveis</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Mesmo raciocínio já visto no teste de <code>clamp</code> da Etapa 4 (`GradcheckSweepSpec`, evitando os pontos exatos de borda): perto de uma quina (<code>x=0</code> em <code>relu</code>), perturbar pros dois lados atravessa o "bico", e a diferença finita mede uma inclinação que não corresponde a nenhum dos dois regimes — não é bug do backward, é limitação inerente do método perto de não-diferenciabilidades.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext"><code>x = [0, 1]</code>, <code>dC = [1, 2]</code>. Backward de <code>tanh</code>: <code>dx[1] = (1-tanh(1)²)·dC[1]</code>. Com <code>tanh(1)≈0.76159</code>, qual é <code>dx[1]</code>, aproximadamente?</p>
+    <div class="options">
+      <button class="option" data-key="a">1.52318 (esqueceu de elevar ao quadrado)</button>
+      <button class="option" data-key="b">2.0 (esqueceu de multiplicar pelo termo <code>1-tanh²</code>)</button>
+      <button class="option" data-key="c">0.42002 (esqueceu de multiplicar por <code>dC[1]=2</code>)</button>
+      <button class="option" data-key="d">0.84004 — <code>(1-0.76159²)·2 = (1-0.57998)·2 = 0.42002·2</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Mesmo cálculo do exemplo numérico da seção §4 do <code>.md</code>: <code>1-tanh(1)² ≈ 0.42002</code>, multiplicado pelo upstream <code>dC[1]=2</code>, dá <code>≈0.84004</code>. As outras opções são erros comuns de esquecer uma etapa da fórmula.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 5 · funções de ativação · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. As quatro ativações e o backward de GELU estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 05-activations.md e activations.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

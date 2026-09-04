@@ -1,0 +1,337 @@
+<title>Scaled Dot-Product Attention — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .cell-text.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.hot2 { stroke: var(--accent2); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-hot2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+    <marker id="arrowhead-ghost" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Scaled Dot-Product Attention</h1>
+    <div class="meta">mini-gpt<br>um token olha<br>para os outros</div>
+    <div class="sub">Folha 01 · Etapa 11 — Atenção · guia visual</div>
+  </div>
+
+  <h2><span class="num">§2–§6</span> o caminho completo, com formatos</h2>
+  <p>
+    A entrada se divide em três papéis. <code>Q</code> e <code>K</code> decidem <strong>quanto</strong> olhar;
+    <code>V</code> carrega <strong>o que</strong> é transportado. Repare que o value só reaparece no último passo,
+    depois que os pesos já estão fechados.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 660 300" width="660">
+        <rect x="16" y="120" width="96" height="40" class="cell hot2"></rect>
+        <text x="64" y="140" class="cell-text hot2">X</text>
+        <text x="64" y="176" class="cell-text soft">[B, T, dModel]</text>
+
+        <rect x="140" y="46" width="96" height="40" class="cell"></rect>
+        <text x="188" y="66" class="cell-text">Q = X·W_Q</text>
+        <text x="188" y="102" class="cell-text soft">[B, T, dHead]</text>
+
+        <rect x="140" y="120" width="96" height="40" class="cell"></rect>
+        <text x="188" y="140" class="cell-text">K = X·W_K</text>
+
+        <rect x="140" y="194" width="96" height="40" class="cell hot"></rect>
+        <text x="188" y="214" class="cell-text hot">V = X·W_V</text>
+        <text x="188" y="250" class="cell-text soft">[B, T, dHead]</text>
+
+        <rect x="272" y="83" width="96" height="40" class="cell"></rect>
+        <text x="320" y="97" class="cell-text">S = Q·Kᵀ</text>
+        <text x="320" y="113" class="cell-text soft">÷ √dHead</text>
+        <text x="320" y="139" class="cell-text soft">[B, T, T]</text>
+
+        <rect x="404" y="83" width="96" height="40" class="cell hot2"></rect>
+        <text x="452" y="97" class="cell-text hot2">P = softmax</text>
+        <text x="452" y="113" class="cell-text soft">(S + máscara)</text>
+        <text x="452" y="139" class="cell-text soft">[B, T, T]</text>
+
+        <rect x="536" y="140" width="96" height="40" class="cell"></rect>
+        <text x="584" y="160" class="cell-text">Y = P·V</text>
+        <text x="584" y="196" class="cell-text soft">[B, T, dHead]</text>
+
+        <path d="M112 132 C 126 100, 126 70, 134 66" class="arrow" marker-end="url(#arrowhead)"></path>
+        <line x1="112" y1="140" x2="134" y2="140" class="arrow" marker-end="url(#arrowhead)"></line>
+        <path d="M112 148 C 126 180, 126 210, 134 214" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+
+        <path d="M236 66 C 252 66, 256 90, 266 95" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M236 140 C 252 140, 256 116, 266 111" class="arrow" marker-end="url(#arrowhead)"></path>
+        <line x1="368" y1="103" x2="398" y2="103" class="arrow" marker-end="url(#arrowhead)"></line>
+        <path d="M500 110 C 516 130, 520 148, 530 152" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M236 220 C 360 236, 470 214, 530 172" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <text x="386" y="252" class="lbl hot" text-anchor="middle">os values entram só aqui</text>
+
+        <text x="320" y="62" class="lbl strong" text-anchor="middle">T² pares comparados</text>
+        <text x="452" y="62" class="lbl strong" text-anchor="middle">cada linha soma 1</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 1</span> O único ponto onde o formato <code>[B, T, T]</code> aparece é entre os scores e os pesos — é ele que custa <code>T²</code>. A tabela de formatos da §8 do <code>.md</code> segue esta mesma ordem, passo a passo.</div>
+  </div>
+
+  <h2><span class="num">§3</span> a matriz de scores não é simétrica</h2>
+  <p>
+    Os números são os do exemplo corrente, antes da escala. A <strong>linha</strong> <code>i</code> diz para onde
+    <code>i</code> olha. A <strong>coluna</strong> <code>j</code> diz quem olha para <code>j</code>. As duas células
+    destacadas mostram por que os dois papéis não se confundem.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 470 290" width="470">
+        <text x="213" y="34" class="lbl strong" text-anchor="middle">S_bruto = Q · Kᵀ</text>
+
+        <text x="151" y="66" class="cell-text soft">k₀</text>
+        <text x="213" y="66" class="cell-text soft">k₁</text>
+        <text x="275" y="66" class="cell-text soft">k₂</text>
+        <text x="104" y="102" class="cell-text soft" style="text-anchor:end">q₀</text>
+        <text x="104" y="146" class="cell-text soft" style="text-anchor:end">q₁</text>
+        <text x="104" y="190" class="cell-text soft" style="text-anchor:end">q₂</text>
+
+        <rect x="120" y="80" width="62" height="44" class="cell"></rect><text x="151" y="102" class="cell-text">4</text>
+        <rect x="182" y="80" width="62" height="44" class="cell hot"></rect><text x="213" y="102" class="cell-text hot">4</text>
+        <rect x="244" y="80" width="62" height="44" class="cell"></rect><text x="275" y="102" class="cell-text">2</text>
+
+        <rect x="120" y="124" width="62" height="44" class="cell hot2"></rect><text x="151" y="146" class="cell-text hot2">3</text>
+        <rect x="182" y="124" width="62" height="44" class="cell"></rect><text x="213" y="146" class="cell-text">6</text>
+        <rect x="244" y="124" width="62" height="44" class="cell"></rect><text x="275" y="146" class="cell-text">3</text>
+
+        <rect x="120" y="168" width="62" height="44" class="cell"></rect><text x="151" y="190" class="cell-text">3</text>
+        <rect x="182" y="168" width="62" height="44" class="cell"></rect><text x="213" y="190" class="cell-text">4</text>
+        <rect x="244" y="168" width="62" height="44" class="cell"></rect><text x="275" y="190" class="cell-text">2</text>
+
+        <line x1="312" y1="102" x2="344" y2="102" class="arrow hot" marker-end="url(#arrowhead-hot)"></line>
+        <text x="352" y="98" class="lbl hot">q₀·k₁ = 4</text>
+        <line x1="312" y1="146" x2="344" y2="146" class="arrow hot2" marker-end="url(#arrowhead-hot2)"></line>
+        <text x="352" y="142" class="lbl hot2">q₁·k₀ = 3</text>
+        <text x="352" y="122" class="lbl">o token 0 olha</text>
+        <text x="352" y="166" class="lbl">o token 1 olha</text>
+
+        <text x="213" y="242" class="lbl strong" text-anchor="middle">4 ≠ 3 — a relação tem direção</text>
+        <text x="213" y="264" class="lbl" text-anchor="middle">com W_Q = W_K as duas células seriam iguais</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 2</span> Se as projeções de query e key fossem a mesma matriz, a matriz de scores seria simétrica e a célula destacada em laranja teria o mesmo valor da destacada em verde. Duas matrizes independentes é o que permite "o adjetivo precisa do substantivo mais do que o contrário" (§2 do <code>.md</code>).</div>
+  </div>
+
+  <h2><span class="num">§4</span> sem a divisão por √dHead, a maioria das posições morre</h2>
+  <p>
+    Uma query contra 16 keys, com <code>dHead = 64</code>. Os dois painéis estão na <strong>mesma escala</strong>.
+    Em cima, os pesos sem a divisão: uma barra fica com 72% de tudo e quatro posições caem abaixo de
+    <code>1e-6</code>. Embaixo, os mesmos scores divididos por <code>√64 = 8</code>.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 440 370" width="440">
+        <text x="44" y="30" class="lbl strong">sem escala — softmax(q·k)</text>
+        <line x1="40" y1="150" x2="400" y2="150" class="arrow"></line>
+        <line x1="40" y1="46" x2="400" y2="46" class="arrow ghost"></line>
+        <line x1="40" y1="80.7" x2="400" y2="80.7" class="arrow ghost"></line>
+        <line x1="40" y1="115.3" x2="400" y2="115.3" class="arrow ghost"></line>
+        <text x="36" y="46" class="cell-text soft" style="text-anchor:end">0.75</text>
+        <text x="36" y="80.7" class="cell-text soft" style="text-anchor:end">0.50</text>
+        <text x="36" y="115.3" class="cell-text soft" style="text-anchor:end">0.25</text>
+        <text x="36" y="150" class="cell-text soft" style="text-anchor:end">0.00</text>
+        <rect x="44" y="129.8" width="18" height="20.2" class="cell hot"></rect>
+        <rect x="66" y="49.5" width="18" height="100.5" class="cell hot"></rect>
+        <rect x="88" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="110" y="146.6" width="18" height="3.4" class="cell hot"></rect>
+        <rect x="132" y="148.9" width="18" height="1.1" class="cell hot"></rect>
+        <rect x="154" y="143.3" width="18" height="6.7" class="cell hot"></rect>
+        <rect x="176" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="198" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="220" y="143.8" width="18" height="6.2" class="cell hot"></rect>
+        <rect x="242" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="264" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="286" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="308" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="330" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="352" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <rect x="374" y="149.3" width="18" height="0.7" class="cell hot"></rect>
+        <text x="75" y="42" class="cell-text hot">0.72</text>
+        <text x="222" y="166" class="lbl" text-anchor="middle">2.59 posições efetivas de 16</text>
+
+        <text x="44" y="212" class="lbl strong">com escala — softmax(q·k / 8)</text>
+        <line x1="40" y1="300" x2="400" y2="300" class="arrow"></line>
+        <line x1="40" y1="196" x2="400" y2="196" class="arrow ghost"></line>
+        <line x1="40" y1="230.7" x2="400" y2="230.7" class="arrow ghost"></line>
+        <line x1="40" y1="265.3" x2="400" y2="265.3" class="arrow ghost"></line>
+        <text x="36" y="196" class="cell-text soft" style="text-anchor:end">0.75</text>
+        <text x="36" y="230.7" class="cell-text soft" style="text-anchor:end">0.50</text>
+        <text x="36" y="265.3" class="cell-text soft" style="text-anchor:end">0.25</text>
+        <text x="36" y="300" class="cell-text soft" style="text-anchor:end">0.00</text>
+        <rect x="44" y="283.6" width="18" height="16.4" class="cell hot2"></rect>
+        <rect x="66" y="279.9" width="18" height="20.1" class="cell hot2"></rect>
+        <rect x="88" y="292.1" width="18" height="7.9" class="cell hot2"></rect>
+        <rect x="110" y="286.8" width="18" height="13.2" class="cell hot2"></rect>
+        <rect x="132" y="288.5" width="18" height="11.5" class="cell hot2"></rect>
+        <rect x="154" y="285.7" width="18" height="14.3" class="cell hot2"></rect>
+        <rect x="176" y="293.3" width="18" height="6.7" class="cell hot2"></rect>
+        <rect x="198" y="290.1" width="18" height="9.9" class="cell hot2"></rect>
+        <rect x="220" y="285.8" width="18" height="14.2" class="cell hot2"></rect>
+        <rect x="242" y="297.1" width="18" height="2.9" class="cell hot2"></rect>
+        <rect x="264" y="299.3" width="18" height="0.7" class="cell hot2"></rect>
+        <rect x="286" y="293.6" width="18" height="6.4" class="cell hot2"></rect>
+        <rect x="308" y="293.9" width="18" height="6.1" class="cell hot2"></rect>
+        <rect x="330" y="296.1" width="18" height="3.9" class="cell hot2"></rect>
+        <rect x="352" y="298.7" width="18" height="1.3" class="cell hot2"></rect>
+        <rect x="374" y="296.7" width="18" height="3.3" class="cell hot2"></rect>
+        <text x="222" y="316" class="lbl" text-anchor="middle">12.72 posições efetivas de 16</text>
+        <text x="222" y="344" class="lbl strong" text-anchor="middle">menor peso: 1.3e-13 → 3.7e-03</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 3</span> "Posições efetivas" é <code>exp</code> da entropia da distribuição — sobre quantas posições ela está de fato espalhada. O gradiente que volta por um peso é proporcional ao próprio peso, então as barras invisíveis do painel de cima também não recebem correção (§4 do <code>.md</code>).</div>
+  </div>
+
+  <h2><span class="num">§5</span> mascarar antes do softmax, nunca depois</h2>
+  <p>
+    Os dois caminhos parecem equivalentes e não são. O softmax normaliza pelo que existia <strong>naquele
+    momento</strong>. Zerar depois tira massa da linha sem repor, e a soma deixa de ser 1 — em cada linha por um
+    fator diferente.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 620 400" width="620">
+        <text x="40" y="42" class="lbl hot2">certo — soma −inf, depois softmax</text>
+        <text x="124" y="66" class="cell-text soft">S + máscara</text>
+        <rect x="40" y="76" width="56" height="34" class="cell"></rect><text x="68" y="93" class="cell-text">2.83</text>
+        <rect x="96" y="76" width="56" height="34" class="cell ghost"></rect><text x="124" y="93" class="cell-text soft">−inf</text>
+        <rect x="152" y="76" width="56" height="34" class="cell ghost"></rect><text x="180" y="93" class="cell-text soft">−inf</text>
+        <rect x="40" y="110" width="56" height="34" class="cell"></rect><text x="68" y="127" class="cell-text">2.12</text>
+        <rect x="96" y="110" width="56" height="34" class="cell"></rect><text x="124" y="127" class="cell-text">4.24</text>
+        <rect x="152" y="110" width="56" height="34" class="cell ghost"></rect><text x="180" y="127" class="cell-text soft">−inf</text>
+        <rect x="40" y="144" width="56" height="34" class="cell"></rect><text x="68" y="161" class="cell-text">2.12</text>
+        <rect x="96" y="144" width="56" height="34" class="cell"></rect><text x="124" y="161" class="cell-text">2.83</text>
+        <rect x="152" y="144" width="56" height="34" class="cell"></rect><text x="180" y="161" class="cell-text">1.41</text>
+
+        <line x1="224" y1="127" x2="292" y2="127" class="arrow hot2" marker-end="url(#arrowhead-hot2)"></line>
+        <text x="258" y="118" class="lbl hot2" text-anchor="middle">softmax</text>
+
+        <text x="396" y="66" class="cell-text soft">pesos P</text>
+        <text x="532" y="66" class="cell-text soft">Σ da linha</text>
+        <rect x="312" y="76" width="56" height="34" class="cell hot2"></rect><text x="340" y="93" class="cell-text hot2">1.000</text>
+        <rect x="368" y="76" width="56" height="34" class="cell ghost"></rect><text x="396" y="93" class="cell-text soft">0</text>
+        <rect x="424" y="76" width="56" height="34" class="cell ghost"></rect><text x="452" y="93" class="cell-text soft">0</text>
+        <text x="532" y="93" class="cell-text hot2">1.000</text>
+        <rect x="312" y="110" width="56" height="34" class="cell hot2"></rect><text x="340" y="127" class="cell-text hot2">0.107</text>
+        <rect x="368" y="110" width="56" height="34" class="cell hot2"></rect><text x="396" y="127" class="cell-text hot2">0.893</text>
+        <rect x="424" y="110" width="56" height="34" class="cell ghost"></rect><text x="452" y="127" class="cell-text soft">0</text>
+        <text x="532" y="127" class="cell-text hot2">1.000</text>
+        <rect x="312" y="144" width="56" height="34" class="cell hot2"></rect><text x="340" y="161" class="cell-text hot2">0.284</text>
+        <rect x="368" y="144" width="56" height="34" class="cell hot2"></rect><text x="396" y="161" class="cell-text hot2">0.576</text>
+        <rect x="424" y="144" width="56" height="34" class="cell hot2"></rect><text x="452" y="161" class="cell-text hot2">0.140</text>
+        <text x="532" y="161" class="cell-text hot2">1.000</text>
+        <text x="340" y="198" class="lbl hot2">y₀ = v₀ = [4, 2]</text>
+
+        <line x1="40" y1="228" x2="580" y2="228" class="arrow ghost"></line>
+
+        <text x="40" y="264" class="lbl hot">errado — softmax, depois zera</text>
+        <text x="124" y="288" class="cell-text soft">S sem máscara</text>
+        <rect x="40" y="298" width="56" height="34" class="cell"></rect><text x="68" y="315" class="cell-text">2.83</text>
+        <rect x="96" y="298" width="56" height="34" class="cell"></rect><text x="124" y="315" class="cell-text">2.83</text>
+        <rect x="152" y="298" width="56" height="34" class="cell"></rect><text x="180" y="315" class="cell-text">1.41</text>
+        <rect x="40" y="332" width="56" height="34" class="cell"></rect><text x="68" y="349" class="cell-text">2.12</text>
+        <rect x="96" y="332" width="56" height="34" class="cell"></rect><text x="124" y="349" class="cell-text">4.24</text>
+        <rect x="152" y="332" width="56" height="34" class="cell"></rect><text x="180" y="349" class="cell-text">2.12</text>
+
+        <line x1="224" y1="332" x2="292" y2="332" class="arrow hot" marker-end="url(#arrowhead-hot)"></line>
+        <text x="258" y="323" class="lbl hot" text-anchor="middle">e só então zera</text>
+
+        <rect x="312" y="298" width="56" height="34" class="cell hot"></rect><text x="340" y="315" class="cell-text hot">0.446</text>
+        <rect x="368" y="298" width="56" height="34" class="cell ghost"></rect><text x="396" y="315" class="cell-text soft">0</text>
+        <rect x="424" y="298" width="56" height="34" class="cell ghost"></rect><text x="452" y="315" class="cell-text soft">0</text>
+        <text x="532" y="315" class="cell-text hot">0.446</text>
+        <rect x="312" y="332" width="56" height="34" class="cell hot"></rect><text x="340" y="349" class="cell-text hot">0.097</text>
+        <rect x="368" y="332" width="56" height="34" class="cell hot"></rect><text x="396" y="349" class="cell-text hot">0.807</text>
+        <rect x="424" y="332" width="56" height="34" class="cell ghost"></rect><text x="452" y="349" class="cell-text soft">0</text>
+        <text x="532" y="349" class="cell-text hot">0.903</text>
+        <text x="340" y="386" class="lbl hot">y₀ = 0.446·v₀ = [1.78, 0.89]</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 4</span> Na versão errada, cada linha encolhe por um fator diferente — 0.446 na primeira, 0.903 na segunda, 1.000 na última. A última linha fica intacta porque nada é mascarado nela, e é por isso que o defeito escapa de um teste que só olhe o fim da sequência (§5 do <code>.md</code>).</div>
+  </div>
+
+  <footer>mini-gpt — etapa 11 · scaled dot-product attention · guia visual</footer>
+</div>

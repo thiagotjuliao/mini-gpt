@@ -1,0 +1,305 @@
+<title>Exercícios — Visão Geral — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong); padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+  .reset-btn:focus-visible, .option:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+
+  .summary { display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft); padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem; }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question { border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 20px; margin-bottom: 18px; }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 3px; border: 1px solid transparent; }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation { display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+  @media (prefers-reduced-motion: reduce) { .progress-fill { transition: none; } }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Visão Geral</h1>
+    <div class="meta">mini-gpt<br>orientação</div>
+    <div class="sub">Visão Geral · 10 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="00-overview.md">00-overview.md</a> e <a href="gpt-architecture.html">gpt-architecture.html</a>.
+    Estas questões testam o mapa geral, não os detalhes — responda antes de começar a Etapa 1.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que um modelo de linguagem faz, fundamentalmente?</p>
+    <div class="options">
+      <button class="option" data-key="a">entende o significado de um texto e responde perguntas sobre ele</button>
+      <button class="option" data-key="b">dada uma sequência de tokens, estima a probabilidade de cada token possível ser o próximo</button>
+      <button class="option" data-key="c">traduz texto entre idiomas</button>
+      <button class="option" data-key="d">memoriza os textos de treino e os recupera quando pedido</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> É a única capacidade do modelo. Escrever textos, responder perguntas e gerar código são todos consequência de repetir essa previsão (§1).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Se o modelo só prevê um token por vez, como ele escreve um texto inteiro?</p>
+    <div class="options">
+      <button class="option" data-key="a">um segundo modelo junta os tokens em frases</button>
+      <button class="option" data-key="b">ele prevê a frase toda de uma vez, e o "próximo token" é só uma simplificação didática</button>
+      <button class="option" data-key="c">o texto já está pronto no modelo, ele só o recupera</button>
+      <button class="option" data-key="d">prevê um token, acrescenta ao texto, e prevê de novo com o texto maior — repetindo (geração autoregressiva)</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Cada previsão é realimentada como entrada da seguinte. É a Etapa 19 do material (§1).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que é um <code>logit</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">a probabilidade final de um token, entre 0 e 1</button>
+      <button class="option" data-key="b">o índice de um token no vocabulário</button>
+      <button class="option" data-key="c">o número bruto que o modelo produz para cada token, antes do softmax — pode ser negativo ou grande</button>
+      <button class="option" data-key="d">o erro do modelo numa previsão</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Logits viram probabilidades depois de passar pelo softmax. Antes disso, são só números sem faixa fixa (§1).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Você precisa saber redes neurais ou PyTorch para acompanhar este material?</p>
+    <div class="options">
+      <button class="option" data-key="a">não — basta programação, cálculo básico (derivada, derivada parcial, regra da cadeia) e multiplicação de matrizes</button>
+      <button class="option" data-key="b">sim, redes neurais são pré-requisito</button>
+      <button class="option" data-key="c">sim, é preciso conhecer PyTorch para comparar as implementações</button>
+      <button class="option" data-key="d">é preciso estatística avançada e álgebra linear completa</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Todo termo de ML é definido na primeira aparição, e o glossário do §5 reúne todos.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">No caminho de um texto pelo modelo, o que acontece com o formato do tensor ao atravessar um bloco?</p>
+    <div class="options">
+      <button class="option" data-key="a">a última dimensão cresce, acumulando informação a cada bloco</button>
+      <button class="option" data-key="b">não muda — entra <code>[2,4,8]</code> e sai <code>[2,4,8]</code>, e é isso que permite empilhar blocos à vontade</button>
+      <button class="option" data-key="c">a dimensão da sequência encolhe a cada bloco</button>
+      <button class="option" data-key="d">vira o tamanho do vocabulário já no primeiro bloco</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Os blocos preservam o formato. Só a projeção final troca a dimensão do embedding pela do vocabulário (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">A saída do modelo para um lote de 2 sequências de 4 tokens, com vocabulário 5, tem formato <code>[2, 4, 5]</code>. Por que há 4 distribuições por sequência, e não uma?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque são 4 blocos no modelo</button>
+      <button class="option" data-key="b">é um detalhe de implementação; só a última é usada</button>
+      <button class="option" data-key="c">porque o vocabulário tem 4 tokens úteis</button>
+      <button class="option" data-key="d">porque <strong>cada posição</strong> prevê o seu próprio próximo token — uma janela de 4 tokens rende 4 exemplos de treino</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> É o que torna o treino eficiente: uma única passada por janela treina todas as posições dela ao mesmo tempo (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O que significa <code>dW</code> na notação usada em todo o material?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>∂L/∂W</code> — o gradiente da <strong>perda</strong> em relação a <code>W</code></button>
+      <button class="option" data-key="b">a derivada de <code>W</code></button>
+      <button class="option" data-key="c">a variação de <code>W</code> entre dois passos de treino</button>
+      <button class="option" data-key="d">a dimensão de <code>W</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> O <code>d</code> colado num nome nunca significa "derivada disto" — significa "quanto a perda responde a isto" (§4).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Uma camada recebe <code>x</code> de formato <code>[10, 4]</code> e tem pesos <code>W</code> de formato <code>[4, 3]</code>. Qual é o formato de <code>dW</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[10, 3]</code> — igual à saída</button>
+      <button class="option" data-key="b"><code>[10, 4, 3]</code> — um gradiente por exemplo do lote</button>
+      <button class="option" data-key="c"><code>[4, 3]</code> — o gradiente sempre tem o formato do tensor a que se refere, e o lote foi somado para dentro dele</button>
+      <button class="option" data-key="d"><code>[10, 4]</code> — igual à entrada</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A opção B é a confusão mais comum: os pesos são <em>compartilhados</em> por todos os exemplos, então não há dimensão de lote em <code>dW</code> (§4).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Por que as Etapas 1 a 6 ficam num módulo separado (<code>scalagrad</code>) das Etapas 7 em diante (<code>gpt</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque são escritas em linguagens diferentes</button>
+      <button class="option" data-key="b">porque as Etapas 1-6 não têm nada de específico de modelos de linguagem — é o equivalente a construir o NumPy antes de construir o modelo, e serve para qualquer projeto</button>
+      <button class="option" data-key="c">porque as Etapas 1-6 são opcionais</button>
+      <button class="option" data-key="d">porque só as Etapas 7+ precisam de testes</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Tensores, autograd e operações matemáticas são genéricos. A fronteira entre os módulos marca exatamente onde o assunto passa a ser GPT (§3).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Num modelo pequeno de ~220 mil parâmetros, cerca de 91% deles ficam nos blocos. O que isso sugere?</p>
+    <div class="options">
+      <button class="option" data-key="a">que os blocos são ineficientes e desperdiçam memória</button>
+      <button class="option" data-key="b">que as tabelas de embedding são a parte mais importante</button>
+      <button class="option" data-key="c">nada — a distribuição de parâmetros é arbitrária</button>
+      <button class="option" data-key="d">que é nos blocos que o modelo guarda o que aprendeu; e como o MLP pesa mais que a atenção dentro de cada bloco, a atenção <em>move</em> informação enquanto o MLP a <em>armazena</em></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> É uma intuição que pesquisa recente sustenta, e ela fica visível só quando se conta os parâmetros por componente (§3).</div>
+  </div>
+
+  <footer>mini-gpt — visão geral · orientação · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. O mapa geral está firme. Pode começar pela Etapa 1.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de começar a Etapa 1.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo reler 00-overview.md com calma — ele é a base de tudo que vem depois.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+  updateScore();
+</script>

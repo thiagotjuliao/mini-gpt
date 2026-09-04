@@ -1,0 +1,436 @@
+<title>Feed-Forward Network (MLP) — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .lbl.hot { fill: var(--accent); }
+  .lbl.hot2 { fill: var(--accent2); }
+  .cell { stroke: var(--line-strong); stroke-width: 1.5; fill: var(--plate-bg); }
+  .cell.hot { fill: var(--accent-soft); stroke: var(--accent); }
+  .cell.hot2 { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .cell.ghost { fill: var(--paper-2); stroke: var(--line); stroke-dasharray: 3 2; }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  .cell-text.soft { fill: var(--ink-soft); font-size: 10.5px; }
+  .cell-text.hot { fill: var(--accent); font-weight: 700; }
+  .cell-text.hot2 { fill: var(--accent2); font-weight: 700; }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent); stroke-width: 1.6; }
+  .arrow.hot2 { stroke: var(--accent2); stroke-width: 1.6; }
+  .arrow.ghost { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 2; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-soft); margin: 0.6em 0 1.4em; font-family: "JetBrains Mono", monospace; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; vertical-align: -2px; margin-right: 6px; }
+  .swatch.h0 { background: var(--accent2-soft); border-color: var(--accent2); }
+  .swatch.h1 { background: var(--accent-soft); border-color: var(--accent); }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path></marker>
+    <marker id="arrowhead-hot2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+    <marker id="arrowhead-ghost" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"></path></marker>
+  </defs>
+</svg>
+
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Feed-Forward Network</h1>
+    <div class="meta">mini-gpt<br>cada posição<br>pensa sozinha</div>
+    <div class="sub">Folha 01 · Etapa 13 — MLP · guia visual</div>
+  </div>
+
+  <p>
+    Em todas as figuras, <code>dModel = 2</code> e <code>dFF = 4</code>. A expansão é 2x, e não 4x,
+    só para os números caberem na folha. Os pesos são os mesmos do capítulo:
+  </p>
+  <pre>W1 = [[ 1.0, -2.0,  0.5,  0.0]     b1 = [0.5, -1.0, 0.25, -0.5]
+      [ 0.0,  1.0, -1.0,  2.0]]
+
+W2 = [[ 1.0,  0.0]                 b2 = [0.1, -0.2]
+      [-1.0,  2.0]
+      [ 0.5,  0.5]
+      [ 0.0, -1.0]]</pre>
+  <div class="legend">
+    <span><span class="swatch h0"></span>tokens idênticos — posições 0 e 2</span>
+    <span><span class="swatch h1"></span>o caminho de um neurônio</span>
+  </div>
+
+  <h2><span class="num">§1</span> três posições, uma função</h2>
+  <p>
+    Cada faixa é uma posição da sequência. Repare em duas coisas: as caixas de peso são
+    <strong>as mesmas</strong> nas três faixas, e <strong>nenhuma seta cruza</strong> de uma faixa
+    para outra. As posições 0 e 2 recebem o mesmo token, e por isso produzem números idênticos do
+    começo ao fim.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 912 322" width="912" role="img" aria-label="Três posições atravessando as mesmas matrizes de peso, sem comunicação entre elas">
+        <text class="lbl strong" x="62" y="52" text-anchor="middle">X</text>
+        <text class="lbl strong" x="324" y="52" text-anchor="middle">Z = X·W1 + b1</text>
+        <text class="lbl strong" x="614" y="52" text-anchor="middle">A = gelu(Z)</text>
+        <text class="lbl strong" x="844" y="52" text-anchor="middle">Y</text>
+
+        <!-- faixa 0 -->
+        <text class="lbl" x="8" y="99">t0</text>
+        <rect class="cell hot2" x="36" y="78" width="40" height="34"></rect><text class="cell-text hot2" x="56" y="95">1</text>
+        <rect class="cell hot2" x="76" y="78" width="40" height="34"></rect><text class="cell-text hot2" x="96" y="95">2</text>
+        <line class="arrow" x1="118" y1="95" x2="150" y2="95" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="152" y="75" width="52" height="40"></rect><text class="cell-text soft" x="178" y="95">·W1+b1</text>
+        <line class="arrow" x1="206" y1="95" x2="230" y2="95" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot2" x="232" y="78" width="46" height="34"></rect><text class="cell-text hot2" x="255" y="95">1.5</text>
+        <rect class="cell hot2" x="278" y="78" width="46" height="34"></rect><text class="cell-text hot2" x="301" y="95">-1.0</text>
+        <rect class="cell hot2" x="324" y="78" width="46" height="34"></rect><text class="cell-text hot2" x="347" y="95">-1.25</text>
+        <rect class="cell hot2" x="370" y="78" width="46" height="34"></rect><text class="cell-text hot2" x="393" y="95">3.5</text>
+        <line class="arrow" x1="418" y1="95" x2="442" y2="95" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="444" y="75" width="46" height="40"></rect><text class="cell-text soft" x="467" y="95">gelu</text>
+        <line class="arrow" x1="492" y1="95" x2="518" y2="95" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot2" x="520" y="78" width="47" height="34"></rect><text class="cell-text hot2" x="543" y="95">1.40</text>
+        <rect class="cell hot2" x="567" y="78" width="47" height="34"></rect><text class="cell-text hot2" x="590" y="95">-0.16</text>
+        <rect class="cell hot2" x="614" y="78" width="47" height="34"></rect><text class="cell-text hot2" x="637" y="95">-0.13</text>
+        <rect class="cell hot2" x="661" y="78" width="47" height="34"></rect><text class="cell-text hot2" x="684" y="95">3.50</text>
+        <line class="arrow" x1="710" y1="95" x2="734" y2="95" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="736" y="75" width="52" height="40"></rect><text class="cell-text soft" x="762" y="95">·W2+b2</text>
+        <line class="arrow" x1="790" y1="95" x2="812" y2="95" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot2" x="814" y="78" width="48" height="34"></rect><text class="cell-text hot2" x="838" y="95">1.59</text>
+        <rect class="cell hot2" x="862" y="78" width="48" height="34"></rect><text class="cell-text hot2" x="886" y="95">-4.08</text>
+
+        <!-- faixa 1 -->
+        <text class="lbl" x="8" y="184">t1</text>
+        <rect class="cell" x="36" y="163" width="40" height="34"></rect><text class="cell-text" x="56" y="180">-1</text>
+        <rect class="cell" x="76" y="163" width="40" height="34"></rect><text class="cell-text" x="96" y="180">0.5</text>
+        <line class="arrow" x1="118" y1="180" x2="150" y2="180" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="152" y="160" width="52" height="40"></rect><text class="cell-text soft" x="178" y="180">·W1+b1</text>
+        <line class="arrow" x1="206" y1="180" x2="230" y2="180" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="232" y="163" width="46" height="34"></rect><text class="cell-text" x="255" y="180">-0.5</text>
+        <rect class="cell" x="278" y="163" width="46" height="34"></rect><text class="cell-text" x="301" y="180">1.5</text>
+        <rect class="cell" x="324" y="163" width="46" height="34"></rect><text class="cell-text" x="347" y="180">-0.75</text>
+        <rect class="cell" x="370" y="163" width="46" height="34"></rect><text class="cell-text" x="393" y="180">0.5</text>
+        <line class="arrow" x1="418" y1="180" x2="442" y2="180" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="444" y="160" width="46" height="40"></rect><text class="cell-text soft" x="467" y="180">gelu</text>
+        <line class="arrow" x1="492" y1="180" x2="518" y2="180" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="520" y="163" width="47" height="34"></rect><text class="cell-text" x="543" y="180">-0.15</text>
+        <rect class="cell" x="567" y="163" width="47" height="34"></rect><text class="cell-text" x="590" y="180">1.40</text>
+        <rect class="cell" x="614" y="163" width="47" height="34"></rect><text class="cell-text" x="637" y="180">-0.17</text>
+        <rect class="cell" x="661" y="163" width="47" height="34"></rect><text class="cell-text" x="684" y="180">0.35</text>
+        <line class="arrow" x1="710" y1="180" x2="734" y2="180" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="736" y="160" width="52" height="40"></rect><text class="cell-text soft" x="762" y="180">·W2+b2</text>
+        <line class="arrow" x1="790" y1="180" x2="812" y2="180" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="814" y="163" width="48" height="34"></rect><text class="cell-text" x="838" y="180">-1.54</text>
+        <rect class="cell" x="862" y="163" width="48" height="34"></rect><text class="cell-text" x="886" y="180">2.17</text>
+
+        <!-- faixa 2 -->
+        <text class="lbl" x="8" y="269">t2</text>
+        <rect class="cell hot2" x="36" y="248" width="40" height="34"></rect><text class="cell-text hot2" x="56" y="265">1</text>
+        <rect class="cell hot2" x="76" y="248" width="40" height="34"></rect><text class="cell-text hot2" x="96" y="265">2</text>
+        <line class="arrow" x1="118" y1="265" x2="150" y2="265" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="152" y="245" width="52" height="40"></rect><text class="cell-text soft" x="178" y="265">·W1+b1</text>
+        <line class="arrow" x1="206" y1="265" x2="230" y2="265" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot2" x="232" y="248" width="46" height="34"></rect><text class="cell-text hot2" x="255" y="265">1.5</text>
+        <rect class="cell hot2" x="278" y="248" width="46" height="34"></rect><text class="cell-text hot2" x="301" y="265">-1.0</text>
+        <rect class="cell hot2" x="324" y="248" width="46" height="34"></rect><text class="cell-text hot2" x="347" y="265">-1.25</text>
+        <rect class="cell hot2" x="370" y="248" width="46" height="34"></rect><text class="cell-text hot2" x="393" y="265">3.5</text>
+        <line class="arrow" x1="418" y1="265" x2="442" y2="265" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="444" y="245" width="46" height="40"></rect><text class="cell-text soft" x="467" y="265">gelu</text>
+        <line class="arrow" x1="492" y1="265" x2="518" y2="265" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot2" x="520" y="248" width="47" height="34"></rect><text class="cell-text hot2" x="543" y="265">1.40</text>
+        <rect class="cell hot2" x="567" y="248" width="47" height="34"></rect><text class="cell-text hot2" x="590" y="265">-0.16</text>
+        <rect class="cell hot2" x="614" y="248" width="47" height="34"></rect><text class="cell-text hot2" x="637" y="265">-0.13</text>
+        <rect class="cell hot2" x="661" y="248" width="47" height="34"></rect><text class="cell-text hot2" x="684" y="265">3.50</text>
+        <line class="arrow" x1="710" y1="265" x2="734" y2="265" marker-end="url(#arrowhead)"></line>
+        <rect class="cell" x="736" y="245" width="52" height="40"></rect><text class="cell-text soft" x="762" y="265">·W2+b2</text>
+        <line class="arrow" x1="790" y1="265" x2="812" y2="265" marker-end="url(#arrowhead)"></line>
+        <rect class="cell hot2" x="814" y="248" width="48" height="34"></rect><text class="cell-text hot2" x="838" y="265">1.59</text>
+        <rect class="cell hot2" x="862" y="248" width="48" height="34"></rect><text class="cell-text hot2" x="886" y="265">-4.08</text>
+
+        <text class="lbl" x="8" y="308">as caixas de peso são um único tensor, desenhado três vezes — o que se repete é a aplicação, não o parâmetro</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 1</span>
+      O forward de três posições, com <code>dModel = 2</code> e <code>dFF = 4</code>. As faixas
+      destacadas recebem o mesmo token e produzem a mesma saída. Os valores de <code>A</code> e
+      <code>Y</code> aparecem com duas casas; a tabela completa está no §1 do capítulo.
+    </div>
+  </div>
+
+  <h2><span class="num">§2</span> o que a largura compra</h2>
+  <p>
+    Com <code>dModel = 3</code> e <code>dFF = 2</code>, a saída é sempre uma combinação dos dois
+    vetores <code>v₀</code> e <code>v₁</code>. Ela vive num <strong>plano</strong> dentro do espaço
+    de três dimensões, e nenhum treinamento tira ela de lá. Os três pontos são as três saídas do
+    exemplo do §2, já com <code>b2</code> subtraído.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 243 312" width="243" role="img" aria-label="As saídas de um MLP estreito, confinadas ao plano gerado pelos vetores de valor">
+        <polygon points="124.5,174.2 61.2,283.9 120.1,137.7 183.4,28.0" fill="var(--accent2-soft)" stroke="var(--accent2)" stroke-width="1.2" opacity="0.75"></polygon>
+        <line class="arrow ghost" x1="121.6" y1="176.0" x2="198.1" y2="220.2"></line>
+        <text class="lbl" x="200" y="226">X</text>
+        <line class="arrow ghost" x1="121.6" y1="176.0" x2="45.0" y2="220.2"></line>
+        <text class="lbl" x="28" y="226">Y</text>
+        <line class="arrow ghost" x1="121.6" y1="176.0" x2="121.6" y2="86.2"></line>
+        <text class="lbl" x="112" y="80">Z</text>
+        <line class="arrow hot" x1="121.6" y1="176.0" x2="92.1" y2="227.0" marker-end="url(#arrowhead-hot)"></line>
+        <text class="lbl hot" x="60" y="242">v₀</text>
+        <line class="arrow hot" x1="121.6" y1="176.0" x2="151.0" y2="102.9" marker-end="url(#arrowhead-hot)"></line>
+        <text class="lbl hot" x="155" y="100">v₁</text>
+        <circle cx="105.0" cy="181.2" r="4" fill="var(--accent)"></circle>
+        <circle cx="140.9" cy="130.8" r="4" fill="var(--accent)"></circle>
+        <circle cx="169.4" cy="57.2" r="4" fill="var(--accent)"></circle>
+        <text class="lbl hot" x="66" y="188">y₀</text>
+        <text class="lbl hot" x="146" y="128">y₁</text>
+        <text class="lbl hot" x="174" y="55">y₂</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 2</span>
+      Projeção isométrica, com o eixo <code>Z</code> comprimido para caber. Os três pontos são
+      coplanares, e o determinante da matriz que eles formam vale <code>-5.6e-16</code>. Com
+      <code>dFF = 4</code>, o mesmo determinante dá <code>-259.029</code> — o plano some.
+    </div>
+  </div>
+
+  <h2><span class="num">§3</span> um neurônio é um par chave-valor</h2>
+  <p>
+    O mesmo forward, agrupado por neurônio em vez de por coordenada. Cada linha mede o alinhamento
+    entre o token e a sua <strong>chave</strong>, compara com o limiar <code>−b1[i]</code>, e escreve
+    o seu <strong>valor</strong> na saída com a intensidade que sobrou. A barra é a ativação, na
+    mesma escala nas quatro linhas.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 812 400" width="812" role="img" aria-label="Os quatro neurônios lidos como pares chave-valor">
+        <text class="lbl strong" x="188" y="42" text-anchor="middle">chave kᵢ</text>
+        <text class="lbl strong" x="267" y="42" text-anchor="middle">x·kᵢ</text>
+        <text class="lbl strong" x="327" y="42" text-anchor="middle">b1[i]</text>
+        <text class="lbl strong" x="393" y="42" text-anchor="middle">Z</text>
+        <text class="lbl strong" x="500" y="42" text-anchor="middle">A = gelu(Z)</text>
+        <text class="lbl strong" x="638" y="42" text-anchor="middle">valor vᵢ</text>
+        <text class="lbl strong" x="742" y="42" text-anchor="middle">A · vᵢ</text>
+
+        <rect class="cell hot2" x="10" y="170" width="86" height="46"></rect>
+        <text class="cell-text hot2" x="53" y="193">x₀ = [1, 2]</text>
+
+        <!-- n0 -->
+        <path class="arrow" d="M96 193 C 120 193, 120 90, 146 90" marker-end="url(#arrowhead)"></path>
+        <text class="lbl" x="112" y="76">n0</text>
+        <rect class="cell" x="150" y="73" width="38" height="34"></rect><text class="cell-text" x="169" y="90">1</text>
+        <rect class="cell" x="188" y="73" width="38" height="34"></rect><text class="cell-text" x="207" y="90">0</text>
+        <rect class="cell ghost" x="240" y="73" width="54" height="34"></rect><text class="cell-text soft" x="267" y="90">1.0</text>
+        <rect class="cell ghost" x="300" y="73" width="54" height="34"></rect><text class="cell-text soft" x="327" y="90">0.5</text>
+        <rect class="cell" x="366" y="73" width="54" height="34"></rect><text class="cell-text" x="393" y="90">1.5</text>
+        <rect x="445" y="80" width="52" height="20" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"></rect>
+        <text class="cell-text hot" x="530" y="90">1.39957</text>
+        <rect class="cell" x="600" y="73" width="38" height="34"></rect><text class="cell-text" x="619" y="90">1</text>
+        <rect class="cell" x="638" y="73" width="38" height="34"></rect><text class="cell-text" x="657" y="90">0</text>
+        <rect class="cell" x="686" y="73" width="56" height="34"></rect><text class="cell-text soft" x="714" y="90">1.39957</text>
+        <rect class="cell" x="742" y="73" width="56" height="34"></rect><text class="cell-text soft" x="770" y="90">0.0</text>
+
+        <!-- n1 -->
+        <path class="arrow" d="M96 193 C 120 193, 120 165, 146 165" marker-end="url(#arrowhead)"></path>
+        <text class="lbl" x="112" y="151">n1</text>
+        <rect class="cell" x="150" y="148" width="38" height="34"></rect><text class="cell-text" x="169" y="165">-2</text>
+        <rect class="cell" x="188" y="148" width="38" height="34"></rect><text class="cell-text" x="207" y="165">1</text>
+        <rect class="cell ghost" x="240" y="148" width="54" height="34"></rect><text class="cell-text soft" x="267" y="165">0.0</text>
+        <rect class="cell ghost" x="300" y="148" width="54" height="34"></rect><text class="cell-text soft" x="327" y="165">-1.0</text>
+        <rect class="cell" x="366" y="148" width="54" height="34"></rect><text class="cell-text" x="393" y="165">-1.0</text>
+        <rect x="439" y="155" width="6" height="20" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"></rect>
+        <text class="cell-text hot" x="530" y="165">-0.15881</text>
+        <rect class="cell" x="600" y="148" width="38" height="34"></rect><text class="cell-text" x="619" y="165">-1</text>
+        <rect class="cell" x="638" y="148" width="38" height="34"></rect><text class="cell-text" x="657" y="165">2</text>
+        <rect class="cell" x="686" y="148" width="56" height="34"></rect><text class="cell-text soft" x="714" y="165">0.15881</text>
+        <rect class="cell" x="742" y="148" width="56" height="34"></rect><text class="cell-text soft" x="770" y="165">-0.31762</text>
+
+        <!-- n2 -->
+        <path class="arrow" d="M96 193 C 120 193, 120 240, 146 240" marker-end="url(#arrowhead)"></path>
+        <text class="lbl" x="112" y="226">n2</text>
+        <rect class="cell" x="150" y="223" width="38" height="34"></rect><text class="cell-text" x="169" y="240">0.5</text>
+        <rect class="cell" x="188" y="223" width="38" height="34"></rect><text class="cell-text" x="207" y="240">-1</text>
+        <rect class="cell ghost" x="240" y="223" width="54" height="34"></rect><text class="cell-text soft" x="267" y="240">-1.5</text>
+        <rect class="cell ghost" x="300" y="223" width="54" height="34"></rect><text class="cell-text soft" x="327" y="240">0.25</text>
+        <rect class="cell" x="366" y="223" width="54" height="34"></rect><text class="cell-text" x="393" y="240">-1.25</text>
+        <rect x="440" y="230" width="5" height="20" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"></rect>
+        <text class="cell-text hot" x="530" y="240">-0.13229</text>
+        <rect class="cell" x="600" y="223" width="38" height="34"></rect><text class="cell-text" x="619" y="240">0.5</text>
+        <rect class="cell" x="638" y="223" width="38" height="34"></rect><text class="cell-text" x="657" y="240">0.5</text>
+        <rect class="cell" x="686" y="223" width="56" height="34"></rect><text class="cell-text soft" x="714" y="240">-0.06614</text>
+        <rect class="cell" x="742" y="223" width="56" height="34"></rect><text class="cell-text soft" x="770" y="240">-0.06614</text>
+
+        <!-- n3 -->
+        <path class="arrow hot" d="M96 193 C 120 193, 120 315, 146 315" marker-end="url(#arrowhead-hot)"></path>
+        <text class="lbl hot" x="112" y="301">n3</text>
+        <rect class="cell hot" x="150" y="298" width="38" height="34"></rect><text class="cell-text hot" x="169" y="315">0</text>
+        <rect class="cell hot" x="188" y="298" width="38" height="34"></rect><text class="cell-text hot" x="207" y="315">2</text>
+        <rect class="cell ghost" x="240" y="298" width="54" height="34"></rect><text class="cell-text soft" x="267" y="315">4.0</text>
+        <rect class="cell ghost" x="300" y="298" width="54" height="34"></rect><text class="cell-text soft" x="327" y="315">-0.5</text>
+        <rect class="cell hot" x="366" y="298" width="54" height="34"></rect><text class="cell-text hot" x="393" y="315">3.5</text>
+        <rect x="445" y="305" width="130" height="20" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"></rect>
+        <text class="cell-text hot" x="530" y="341">3.49938</text>
+        <rect class="cell hot" x="600" y="298" width="38" height="34"></rect><text class="cell-text hot" x="619" y="315">0</text>
+        <rect class="cell hot" x="638" y="298" width="38" height="34"></rect><text class="cell-text hot" x="657" y="315">-1</text>
+        <rect class="cell hot" x="686" y="298" width="56" height="34"></rect><text class="cell-text soft" x="714" y="315">0.0</text>
+        <rect class="cell hot" x="742" y="298" width="56" height="34"></rect><text class="cell-text hot" x="770" y="315">-3.49938</text>
+
+        <line class="arrow ghost" x1="445" y1="60" x2="445" y2="345"></line>
+        <text class="lbl" x="449" y="360">zero</text>
+        <path class="arrow hot2" d="M686 350 L 798 350 L 798 372 L 742 372" marker-end="url(#arrowhead-hot2)"></path>
+        <text class="lbl hot2" x="330" y="376">soma das quatro contribuições + b2  =  [1.59224, −4.08314]</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 3</span>
+      O token <code>x₀ = [1, 2]</code> passando pelos quatro neurônios. O neurônio 3 tem a chave mais
+      alinhada com o token, dispara forte e domina a saída. O neurônio 2 aponta quase na direção
+      oposta, e contribui 50 vezes menos. A soma das quatro contribuições reproduz a linha 0 de
+      <code>Y</code> da FIG 1.
+    </div>
+  </div>
+
+  <h2><span class="num">§3</span> o portão suave</h2>
+  <p>
+    A curva é a GELU de verdade, traçada ponto a ponto. Os quatro <code>Z</code> da FIG 3 estão
+    marcados nela. Repare que os dois neurônios desligados não vão a zero exato: eles ficam num
+    valor pequeno e <strong>negativo</strong>, com derivada diferente de zero. É a diferença entre
+    GELU e ReLU, e o motivo de um neurônio poder voltar da região desligada.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 400 240" width="400" role="img" aria-label="A curva da GELU com os quatro valores de pré-ativação marcados">
+        <g transform="translate(60,20)">
+          <line class="arrow ghost" x1="0" y1="157.5" x2="285" y2="157.5"></line>
+          <line class="arrow ghost" x1="120" y1="0" x2="120" y2="185"></line>
+          <polyline class="arrow hot2" fill="none" points="0.0,157.6 4.0,157.7 8.0,157.8 12.0,157.8 16.0,157.9 20.0,158.1 24.0,158.2 28.0,158.4 32.0,158.6 36.0,158.9 40.0,159.2 44.0,159.5 48.0,159.9 52.0,160.3 56.0,160.8 60.0,161.3 64.0,161.7 68.0,162.2 72.0,162.7 76.0,163.1 80.0,163.5 84.0,163.7 88.0,163.9 92.0,163.9 96.0,163.7 100.0,163.3 104.0,162.7 108.0,161.8 112.0,160.7 116.0,159.2 120.0,157.5 124.0,155.5 128.0,153.2 132.0,150.5 136.0,147.7 140.0,144.5 144.0,141.2 148.0,137.6 152.0,133.9 156.0,130.0 160.0,126.0 164.0,121.9 168.0,117.7 172.0,113.5 176.0,109.2 180.0,105.0 184.0,100.8 188.0,96.6 192.0,92.4 196.0,88.3 200.0,84.2 204.0,80.1 208.0,76.1 212.0,72.2 216.0,68.2 220.0,64.3 224.0,60.4 228.0,56.6 232.0,52.8 236.0,48.9 240.0,45.1 244.0,41.3 248.0,37.6 252.0,33.8 256.0,30.0 260.0,26.3 264.0,22.5 268.0,18.8 272.0,15.0 276.0,11.3 280.0,7.5"></polyline>
+          <circle cx="70" cy="162.5" r="3.5" fill="var(--accent)"></circle>
+          <text class="lbl hot" x="20" y="178">n2 · Z=-1.25</text>
+          <circle cx="80" cy="163.5" r="3.5" fill="var(--accent)"></circle>
+          <text class="lbl hot" x="96" y="178">n1 · Z=-1.0</text>
+          <circle cx="180" cy="105" r="3.5" fill="var(--accent)"></circle>
+          <text class="lbl hot" x="188" y="102">n0 · Z=1.5</text>
+          <circle cx="260" cy="26.3" r="3.5" fill="var(--accent)"></circle>
+          <text class="lbl hot" x="200" y="24">n3 · Z=3.5</text>
+          <text class="lbl" x="286" y="152">Z</text>
+          <text class="lbl" x="124" y="12">A</text>
+        </g>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 4</span>
+      A GELU, com os quatro valores de <code>Z</code> do token <code>x₀</code>. O vale negativo é
+      raso: o mínimo da função vale cerca de <code>−0.17</code>, perto de <code>Z = −0.75</code>.
+      A derivada ali é pequena, mas não é zero.
+    </div>
+  </div>
+
+  <h2><span class="num">§5</span> o backward, e quem soma sobre o lote</h2>
+  <p>
+    A linha de cima é o forward. A de baixo é o gradiente voltando. Cada peso recebe contribuição de
+    <strong>todas</strong> as <code>B·T</code> posições, porque é um tensor só usado muitas vezes.
+    Já <code>dX</code>, <code>dZ</code> e <code>dA</code> têm uma cópia por posição, e cada uma fica
+    com a sua.
+  </p>
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 920 292" width="920" role="img" aria-label="O fluxo do backward pelo MLP, mostrando quais gradientes somam sobre o lote">
+        <rect class="cell ghost" x="40" y="40" width="90" height="40"></rect><text class="cell-text soft" x="85" y="60">X</text>
+        <rect class="cell ghost" x="270" y="40" width="90" height="40"></rect><text class="cell-text soft" x="315" y="60">Z</text>
+        <rect class="cell ghost" x="500" y="40" width="90" height="40"></rect><text class="cell-text soft" x="545" y="60">A</text>
+        <rect class="cell ghost" x="730" y="40" width="90" height="40"></rect><text class="cell-text soft" x="775" y="60">Y</text>
+        <line class="arrow ghost" x1="132" y1="60" x2="266" y2="60" marker-end="url(#arrowhead-ghost)"></line>
+        <text class="lbl" x="199" y="34" text-anchor="middle">·W1 + b1</text>
+        <line class="arrow ghost" x1="362" y1="60" x2="496" y2="60" marker-end="url(#arrowhead-ghost)"></line>
+        <text class="lbl" x="429" y="34" text-anchor="middle">gelu</text>
+        <line class="arrow ghost" x1="592" y1="60" x2="726" y2="60" marker-end="url(#arrowhead-ghost)"></line>
+        <text class="lbl" x="659" y="34" text-anchor="middle">·W2 + b2</text>
+
+        <rect class="cell hot" x="40" y="140" width="90" height="40"></rect><text class="cell-text hot" x="85" y="160">dX</text>
+        <rect class="cell hot" x="270" y="140" width="90" height="40"></rect><text class="cell-text hot" x="315" y="160">dZ</text>
+        <rect class="cell hot" x="500" y="140" width="90" height="40"></rect><text class="cell-text hot" x="545" y="160">dA</text>
+        <rect class="cell hot" x="730" y="140" width="90" height="40"></rect><text class="cell-text hot" x="775" y="160">dY</text>
+        <line class="arrow hot" x1="266" y1="160" x2="134" y2="160" marker-end="url(#arrowhead-hot)"></line>
+        <text class="lbl hot" x="199" y="134" text-anchor="middle">· W1ᵀ</text>
+        <line class="arrow hot" x1="496" y1="160" x2="364" y2="160" marker-end="url(#arrowhead-hot)"></line>
+        <text class="lbl hot" x="429" y="134" text-anchor="middle">⊙ gelu'(Z)</text>
+        <line class="arrow hot" x1="726" y1="160" x2="594" y2="160" marker-end="url(#arrowhead-hot)"></line>
+        <text class="lbl hot" x="659" y="134" text-anchor="middle">· W2ᵀ</text>
+
+        <line class="arrow hot2" x1="315" y1="182" x2="315" y2="218" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell hot2" x="188" y="220" width="254" height="52"></rect>
+        <text class="cell-text hot2" x="315" y="238">dW1 = Xᵀ · dZ</text>
+        <text class="cell-text soft" x="315" y="258">db1 = soma de dZ sobre B e T</text>
+
+        <line class="arrow hot2" x1="775" y1="182" x2="775" y2="218" marker-end="url(#arrowhead-hot2)"></line>
+        <rect class="cell hot2" x="648" y="220" width="254" height="52"></rect>
+        <text class="cell-text hot2" x="775" y="238">dW2 = Aᵀ · dY</text>
+        <text class="cell-text soft" x="775" y="258">db2 = soma de dY sobre B e T</text>
+
+        <text class="lbl" x="40" y="204">um gradiente por posição</text>
+        <text class="lbl hot2" x="470" y="204" text-anchor="middle">os parâmetros somam sobre as B·T posições</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG 5</span>
+      O grafo do backward. A pré-ativação <code>Z</code> aparece de novo aqui, na derivada da GELU —
+      ela precisa da entrada, não da saída, e por isso o grafo tem que segurá-la até o backward
+      rodar. Os números deste caminho estão no §5 do capítulo.
+    </div>
+  </div>
+
+  <footer>mini-gpt · theory/13-mlp · guia visual</footer>
+</div>

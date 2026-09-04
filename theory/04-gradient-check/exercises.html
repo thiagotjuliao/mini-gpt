@@ -1,0 +1,318 @@
+<title>Exercícios — Etapa 4: Gradient Check — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Gradient Check</h1>
+    <div class="meta">mini-gpt<br>núcleo de tensores</div>
+    <div class="sub">Etapa 4 — Gradient Check · 10 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="04-gradient-check.md">04-gradient-check.md</a> e <a href="finite-difference.html">finite-difference.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que não dá pra simplesmente calcular o limite da definição de derivada (<code>ε → 0</code>) diretamente no código?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque Scala não suporta números irracionais</button>
+      <button class="option" data-key="b">um computador só consegue avaliar <code>f</code> em pontos concretos, com aritmética de ponto flutuante de precisão finita — não dá pra "chegar" a um limite exato, só aproximar com um <code>ε</code> pequeno</button>
+      <button class="option" data-key="c">porque <code>f</code> nunca é diferenciável em todo o domínio</button>
+      <button class="option" data-key="d">dá, sim — só é mais lento</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A diferença finita (progressiva ou central) é uma aproximação do limite, calculada com um <code>ε</code> pequeno mas finito — nunca zero de verdade, já que dividir por zero (ou por algo indistinguível de zero em ponto flutuante) não funciona.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Geometricamente, o que a diferença central <code>[f(x+ε) - f(x-ε)] / (2ε)</code> representa?</p>
+    <div class="options">
+      <button class="option" data-key="a">a área sob a curva entre <code>x-ε</code> e <code>x+ε</code></button>
+      <button class="option" data-key="b">a inclinação da reta tangente exata em <code>x</code></button>
+      <button class="option" data-key="c">a inclinação da reta secante que liga <code>(x-ε, f(x-ε))</code> a <code>(x+ε, f(x+ε))</code></button>
+      <button class="option" data-key="d">o valor médio de <code>f</code> no intervalo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É a inclinação de uma secante *centrada* em <code>x</code> — próxima da tangente (a derivada de verdade) quando <code>ε</code> é pequeno, mas não exatamente igual a ela.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que a diferença central (<code>[f(x+ε)-f(x-ε)]/2ε</code>) é preferida à diferença progressiva (<code>[f(x+ε)-f(x)]/ε</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a">o erro da central é proporcional a <code>ε²</code> (os termos de segunda ordem da expansão de Taylor se cancelam), enquanto o da progressiva é proporcional a <code>ε</code> — muito maior pro mesmo <code>ε</code></button>
+      <button class="option" data-key="b">a central é mais rápida de calcular, só isso</button>
+      <button class="option" data-key="c">não há diferença de precisão, só de convenção</button>
+      <button class="option" data-key="d">a progressiva não funciona pra funções não-lineares</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Expandindo <code>f(x+ε)</code> e <code>f(x-ε)</code> em série de Taylor e subtraindo, os termos <code>f''(x)ε²/2</code> se cancelam exatamente na central — sobra erro de ordem <code>ε³/6</code> (que dividido por <code>2ε</code> vira ordem <code>ε²</code>). Na progressiva, esse cancelamento não acontece, e o erro fica em ordem <code>ε</code>.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext"><code>f(x) = x³</code>, em <code>x = 2</code> (derivada analítica <code>3x² = 12</code>), com <code>ε = 1e-5</code>. Qual é, aproximadamente, o erro da diferença central em relação ao valor analítico?</p>
+    <div class="options">
+      <button class="option" data-key="a">≈ 6e-5 (ordem <code>ε</code>)</button>
+      <button class="option" data-key="b">≈ 1e-5 (ordem <code>ε</code>)</button>
+      <button class="option" data-key="c">exatamente 0, sempre, pra qualquer <code>f</code></button>
+      <button class="option" data-key="d">≈ 1e-10 (ordem <code>ε²</code>)</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Do exemplo numérico da seção §1: <code>grad_numérico = 12 + ε² = 12.0000000001</code>, erro de <code>ε² = 1e-10</code> — muito menor que o erro de <code>6e-5</code> (ordem <code>ε</code>) que a diferença progressiva teria no mesmo ponto.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que o erro entre gradiente analítico e numérico é medido de forma <strong>relativa</strong> (<code>erro/max(...)</code>) em vez de <strong>absoluta</strong> (<code>|analítico-numérico|</code>)?</p>
+    <div class="options">
+      <button class="option" data-key="a">erro absoluto é mais difícil de calcular em ponto flutuante</button>
+      <button class="option" data-key="b">um mesmo erro absoluto (ex.: <code>0.001</code>) é insignificante se o gradiente vale <code>1000</code>, mas gigante se vale <code>0.0001</code> — o relativo normaliza pela escala do próprio gradiente</button>
+      <button class="option" data-key="c">porque o gradiente analítico às vezes é negativo</button>
+      <button class="option" data-key="d">não há diferença prática entre os dois</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> É exatamente o problema de escala: erro absoluto trata todo gradiente igual, mas gradientes muito pequenos ou muito grandes precisam de critérios proporcionais ao próprio tamanho, senão o teste fica bom demais ou rigoroso demais dependendo da magnitude.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Pra que serve o piso <code>1e-8</code> na fórmula <code>erro = |analítico-numérico| / max(|analítico|, |numérico|, 1e-8)</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">é a tolerância máxima de erro aceitável</button>
+      <button class="option" data-key="b">é o valor de <code>ε</code> usado na diferença central</button>
+      <button class="option" data-key="c">evita divisão por zero (ou por algo próximo de zero) quando os dois gradientes já são praticamente nulos</button>
+      <button class="option" data-key="d">é um valor arbitrário sem função matemática, só estilo de código</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Sem esse piso, um gradiente analítico e numérico ambos próximos de zero (ex.: <code>1e-12</code> e <code>-1e-12</code>) dariam um erro relativo instável ou indefinido — o piso garante um denominador mínimo razoável nesse caso.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Um backward tem um bug de sinal trocado: pra <code>x=2</code>, <code>f(x)=x³</code>, o analítico (com bug) devolve <code>-12</code> em vez de <code>12</code>; o numérico (correto) dá <code>≈12</code>. Qual é o erro relativo aproximado, e o que isso indica?</p>
+    <div class="options">
+      <button class="option" data-key="a">≈ 2.0 — muito acima de <code>1e-3</code>, indicando bug claro</button>
+      <button class="option" data-key="b">≈ 0.0 — os dois têm o mesmo valor absoluto, então "batem"</button>
+      <button class="option" data-key="c">≈ 1e-5 — na faixa "suspeito", vale investigar mas pode ser normal</button>
+      <button class="option" data-key="d">não dá pra calcular erro relativo quando um gradiente é negativo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>erro = |-12-12| / max(12,12,1e-8) = 24/12 = 2.0</code> — bem acima do limiar de bug (<code>1e-3</code>). O erro relativo não olha só a magnitude, olha a diferença real entre os dois; um sinal trocado produz um erro enorme mesmo com magnitudes iguais.</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que <code>f</code>, a função passada pra <code>gradCheck(f, input)</code>, precisa devolver um tensor <strong>escalar</strong>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque tensores não-escalares não têm gradiente definido</button>
+      <button class="option" data-key="b">é só uma limitação de implementação, sem motivo matemático</button>
+      <button class="option" data-key="c"><code>backward()</code> (usado pro lado analítico) exige um tensor de tamanho 1 como raiz — testar uma operação como <code>matmul</code>, que não é escalar, exige compor com algo como <code>.sum()</code> antes de passar pro <code>gradCheck</code></button>
+      <button class="option" data-key="d">porque a diferença central só funciona em uma dimensão</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Mesmo <code>assert</code> que já existe em <code>Tensor.backward()</code> desde a Etapa 2. Pra testar operações que naturalmente produzem tensores (não escalares), o padrão é envolver com uma redução (<code>.sum()</code>) antes de testar — mesma técnica já usada nos testes de <code>matmul</code>/<code>clamp</code> da Etapa 3.</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Ao perturbar <code>input.data(i)</code> pra calcular o gradiente numérico da posição <code>i</code>, por que é essencial <strong>restaurar</strong> o valor original antes de perturbar a posição <code>i+1</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">não é essencial — qualquer ordem de perturbação dá o mesmo resultado final</button>
+      <button class="option" data-key="b">se a perturbação da posição <code>i</code> não for desfeita, a posição <code>i+1</code> seria testada com <code>input</code> num estado diferente do original — o forward calculado ali não corresponderia mais ao ponto onde o gradiente analítico foi calculado</button>
+      <button class="option" data-key="c">só por questão de performance, pra reusar menos memória</button>
+      <button class="option" data-key="d">porque Scala não permite reatribuir elementos de <code>Array[Double]</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O gradiente numérico de cada posição precisa ser medido isoladamente, mantendo todas as outras posições fixas no valor original — exatamente a definição de derivada parcial. Deixar uma perturbação "vazar" pra próxima posição corrompe todo o resto do gradiente numérico calculado depois dela.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext"><code>f(x) = (x·x).sum()</code>, <code>x = [3.0, -2.0]</code>. O gradiente analítico é <code>[6.0, -4.0]</code> (derivado de <code>∂f/∂xᵢ = 2xᵢ</code>). Ao perturbar <strong>só</strong> a posição 1 (<code>x₁ = -2.0</code>) com <code>ε=1e-5</code>, qual par de valores de <code>f</code> é usado na diferença central?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>f(3.00001,-2.0)</code> e <code>f(2.99999,-2.0)</code> — perturbando <code>x₀</code>, não <code>x₁</code></button>
+      <button class="option" data-key="b"><code>f(3.0,-2.0)</code> repetido duas vezes — sem nenhuma perturbação</button>
+      <button class="option" data-key="c">um único valor, <code>f(3.0,-1.99999)</code>, dividido por <code>ε</code> (diferença progressiva, não central)</button>
+      <button class="option" data-key="d"><code>f(3.0,-1.99999)</code> e <code>f(3.0,-2.00001)</code> — só <code>x₁</code> se move, <code>x₀</code> fica fixo nos dois cálculos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Perturbar a posição 1 significa variar só <code>x₁</code> (pra <code>-1.99999</code> e <code>-2.00001</code>), mantendo <code>x₀=3.0</code> fixo nos dois forwards. Isso dá <code>f=12.9999600001</code> e <code>f=13.0000400001</code>, cuja diferença central é <code>-4.0</code> — batendo com o analítico <code>∂f/∂x₁ = 2·(-2) = -4</code>.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 4 · gradient check · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A mecânica de diferença central + erro relativo está sólida.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar o gradCheck.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 04-gradient-check.md e finite-difference.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

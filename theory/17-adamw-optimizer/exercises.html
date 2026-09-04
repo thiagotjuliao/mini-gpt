@@ -1,0 +1,367 @@
+<title>Exercícios — Etapa 17: AdamW — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — AdamW</h1>
+    <div class="meta">mini-gpt<br>do gradiente<br>ao passo</div>
+    <div class="sub">Etapa 17 — AdamW · 14 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="17-adamw-optimizer.md">17-adamw-optimizer.md</a> e <a href="adamw.html">adamw.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Em que momento o otimizador roda?</p>
+    <div class="options">
+      <button class="option" data-key="a">durante o <code>forward</code>, camada por camada</button>
+      <button class="option" data-key="b">depois que o <code>backward()</code> terminou, uma vez por lote</button>
+      <button class="option" data-key="c">dentro do <code>backward()</code>, junto com a regra da cadeia</button>
+      <button class="option" data-key="d">uma vez por época, no fim do treino</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Ele não participa do grafo e não cria tensor nenhum. Ele lê os gradientes que o <code>backward()</code> já depositou e escreve nos parâmetros (§1).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que o SGD subtrai o gradiente em vez de somá-lo?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque o gradiente é sempre negativo</button>
+      <button class="option" data-key="b">para o parâmetro não crescer sem limite</button>
+      <button class="option" data-key="c">porque o gradiente aponta para onde a perda <em>cresce</em>, e queremos descer</button>
+      <button class="option" data-key="d">por convenção; somar funcionaria igual</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A derivada aponta na direção de maior crescimento. Somar o gradiente maximizaria a perda — o modelo pioraria a cada passo, de forma perfeitamente estável (§1).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que <code>m</code> e <code>v</code> medem, respectivamente?</p>
+    <div class="options">
+      <button class="option" data-key="a">o valor do parâmetro e o valor da perda</button>
+      <button class="option" data-key="b">o gradiente atual e o gradiente anterior</button>
+      <button class="option" data-key="c">a média e a mediana dos gradientes</button>
+      <button class="option" data-key="d">a direção típica do gradiente e a escala típica dele</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> O <code>m</code> é média de <code>g</code>, e sofre cancelamento entre sinais opostos — por isso guarda direção. O <code>v</code> é média de <code>g²</code>, onde tudo é positivo, e por isso guarda magnitude (§3 e §4).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que o contador <code>t</code> começa em 1, e não em 0?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque com <code>t = 0</code> o fator <code>1 − β1ᵗ</code> seria zero, e a correção dividiria por zero</button>
+      <button class="option" data-key="b">porque índice base 1 é a convenção do Scala</button>
+      <button class="option" data-key="c">porque <code>m</code> e <code>v</code> começam em 1</button>
+      <button class="option" data-key="d">porque o primeiro passo não usa correção de viés</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>1 − β1⁰ = 0</code>. O <code>t</code> tem que valer 1 já na primeira chamada de <code>step()</code>, e é por isso que um otimizador construído com <code>t = 0</code> precisa incrementar <em>antes</em> de usar (§5).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que um único <code>lr</code> não serve para o modelo inteiro?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque cada camada tem um número diferente de parâmetros</button>
+      <button class="option" data-key="b">porque o <code>Double</code> perde precisão em valores pequenos</button>
+      <button class="option" data-key="c">porque os gradientes variam por ordens de grandeza entre parâmetros, e o passo do SGD é proporcional a eles</button>
+      <button class="option" data-key="d">porque o <code>lr</code> precisa diminuir ao longo do treino</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Um <code>lr</code> que serve para o gradiente grande deixa o pequeno parado; um que move o pequeno faz o grande explodir. A opção D descreve o <em>schedule</em> da Etapa 18, que é um problema diferente e não resolve este (§2).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Você multiplica <strong>todos</strong> os gradientes por 1000. O que acontece com o passo do Adam?</p>
+    <div class="options">
+      <button class="option" data-key="a">fica 1000 vezes maior</button>
+      <button class="option" data-key="b">não muda — foi medido igual até a décima casa decimal</button>
+      <button class="option" data-key="c">fica 1000 vezes menor</button>
+      <button class="option" data-key="d">fica <code>√1000</code> vezes maior</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O <code>m̂</code> cresce 1000×, o <code>√v̂</code> também, e a razão é adimensional. A diferença medida foi de <code>1e-10</code>, que é o <code>ε</code> e nada mais. Com SGD a resposta seria A (§4).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">No <strong>primeiro</strong> passo, com correção de viés, quanto vale <code>|passo|</code> para gradientes <code>0.30</code>, <code>0.03</code> e <code>−0.60</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>9e-5</code>, <code>9e-6</code> e <code>1.8e-4</code> — proporcional ao gradiente</button>
+      <button class="option" data-key="b">depende de <code>β1</code> e <code>β2</code>, e não dá para prever</button>
+      <button class="option" data-key="c"><code>1.3e-4</code> nos três</button>
+      <button class="option" data-key="d"><code>3e-4</code> nos três — exatamente o <code>lr</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Com <code>t = 1</code> a correção devolve <code>m̂ = g</code> e <code>v̂ = g²</code>, então o passo é <code>lr · g / |g|</code>. Só o sinal sobrevive. A opção A é o SGD; a opção C é o mesmo passo <em>sem</em> a correção, encolhido pelo fator <code>0.4472</code> (§5).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Com <code>m₂ = 0.0370</code> e um gradiente novo de <code>−0.20</code>, quanto vale <code>m₃</code>, e o que isso significa?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>0.0133</code> — ainda positivo, então o passo continua no mesmo sentido, só que menor</button>
+      <button class="option" data-key="b"><code>−0.20</code> — o gradiente novo substitui o histórico</button>
+      <button class="option" data-key="c"><code>−0.0163</code> — o sinal inverte junto com o gradiente</button>
+      <button class="option" data-key="d"><code>0.0370</code> — o <code>m</code> não muda quando o sinal troca</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> <code>0.9 · 0.0370 + 0.1 · (−0.20) = 0.0133</code>. É o ponto do momento: uma discordância isolada reduz a confiança, mas não inverte a decisão. Seriam necessários vários gradientes negativos seguidos para virar o sinal (§3).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">O que acontece se você esquecer de zerar os gradientes entre dois passos?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada — o <code>backward()</code> sobrescreve o gradiente anterior</button>
+      <button class="option" data-key="b">o gradiente do lote novo soma no antigo, e o modelo anda na soma de tudo que já viu</button>
+      <button class="option" data-key="c">o programa lança <code>IllegalArgumentException</code> no <code>backward()</code></button>
+      <button class="option" data-key="d">o gradiente é dividido pelo número de lotes, o que só muda a escala</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A API do <code>Gradient</code> expõe <code>accumulate</code> e se recusa a expor um <code>update</code> genérico — a soma é deliberada, para grafos com tensores reusados. Fora de uma passada, ela vira acúmulo indevido, e em silêncio (§8).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Sem a correção de viés, o primeiro passo sai com que fração do tamanho pretendido?</p>
+    <div class="options">
+      <button class="option" data-key="a">10%, que é <code>1 − β1</code></button>
+      <button class="option" data-key="b">5%, que é <code>1 − β2</code></button>
+      <button class="option" data-key="c">≈ 45%, que é <code>0.1 / √0.05</code></button>
+      <button class="option" data-key="d">200%, porque o <code>v</code> pequeno aumenta o passo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> O numerador encolhe por <code>0.1</code> e o denominador por <code>√0.05 = 0.2236</code>. Os dois encolhimentos quase se cancelam, e sobra <code>0.4472</code>. É por isso que o erro é discreto: um passo de 45% ainda desce a perda (§5).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que somar <code>λ·p</code> ao gradiente dá errado dentro do Adam?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque o termo atravessa a divisão por <code>√v̂</code>, e o decaimento acaba dividido pelo tamanho do gradiente</button>
+      <button class="option" data-key="b">porque <code>λ·p</code> pode ser negativo quando <code>p</code> é negativo</button>
+      <button class="option" data-key="c">porque o autograd não sabe derivar o termo <code>λ·p</code></button>
+      <button class="option" data-key="d">porque isso faz a perda deixar de ser um escalar</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> No exemplo do capítulo o decaimento efetivo varia <strong>333 vezes</strong> entre escalas de gradiente, e no sentido errado: quem tem gradiente minúsculo apanha mais. A opção B descreve um comportamento correto — com <code>p</code> negativo o decaimento empurra para cima, que é a direção do zero (§6).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O estado é um <code>Map[Tensor, (Array[Double], Array[Double])]</code>. Por que <code>Tensor</code> funciona como chave?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>Tensor</code> é uma <code>case class</code>, e ganha <code>hashCode</code> estrutural de graça</button>
+      <button class="option" data-key="b">porque o <code>shape</code> identifica cada parâmetro de forma única</button>
+      <button class="option" data-key="c">porque <code>Tensor</code> define um <code>equals</code> que compara <code>data</code> posição a posição</button>
+      <button class="option" data-key="d">porque <code>Tensor</code> é uma <code>class</code> comum, então a igualdade é por referência — dois parâmetros distintos nunca colidem</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> É a mesma decisão que faz <code>_prev: Set[Tensor]</code> funcionar no grafo. Com igualdade estrutural, dois pesos inicializados por acaso com os mesmos números viravam a mesma chave e compartilhavam o momento um do outro (§7).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Por que <code>updateData</code> exige <code>isContiguous</code>, se todo parâmetro já nasce contíguo?</p>
+    <div class="options">
+      <button class="option" data-key="a">por desempenho: escrever num array contíguo é mais rápido</button>
+      <button class="option" data-key="b">porque <code>data</code> é indexado pelas strides reais e <code>gradient</code> por índice canônico — numa view os dois divergem, e a escrita embaralharia os valores</button>
+      <button class="option" data-key="c">porque views não têm <code>requiresGradient</code></button>
+      <button class="option" data-key="d">porque o <code>reshape</code> já chama <code>contiguous</code> internamente</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Num tensor contíguo as duas indexações coincidem, e é exatamente por isso que o bug de 2026-08-21 passou por nove operações unárias sem sintoma. Só entrada transposta reprovou: erro de <code>0.632</code> contra <code>8.5e-11</code>. A checagem nunca dispara por uso legítimo — ela existe para o dia em que alguém passar uma view (§8).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">O <code>step()</code> devolve um <code>AdamW</code> novo em vez de mutar o próprio estado. Qual é o custo real dessa escolha, e o que fazer com ele?</p>
+    <div class="options">
+      <button class="option" data-key="a">nenhum: alocar objetos em Scala é sempre grátis</button>
+      <button class="option" data-key="b">o treino fica incorreto, porque o estado precisa persistir entre passos</button>
+      <button class="option" data-key="c">alocações a mais por passo — que devem ser medidas antes de qualquer conclusão, porque no <code>matmul</code> a versão mais funcional foi também a mais rápida</button>
+      <button class="option" data-key="d">o <code>t</code> se perde entre os passos, e a correção de viés para de funcionar</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> São dois arrays do tamanho do parâmetro por passo, mais o array do <code>updateData</code>. O precedente do projeto desaconselha concluir sem medir: no <code>matmul</code>, <code>updated</code> deu 288 ms, <code>while</code> deu 126 ms, e a versão com <code>foldLeft</code> e aritmética de deslocamento deu 58 ms. As opções B e D confundem "não mutar" com "não propagar" — o estado novo é o que o próximo <code>step()</code> recebe (§7).</div>
+  </div>
+
+  <footer>mini-gpt · theory/17-adamw-optimizer · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. As duas médias móveis, a correção de viés e o decaimento desacoplado estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 17-adamw-optimizer.md e adamw.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

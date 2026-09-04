@@ -1,0 +1,367 @@
+<title>Exercícios — Etapa 19: Geração de texto — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Geração de texto</h1>
+    <div class="meta">mini-gpt<br>o produto final,<br>e a última etapa</div>
+    <div class="sub">Etapa 19 — Inferência e geração · 14 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="19-inference-generation.md">19-inference-generation.md</a> e <a href="generation.html">generation.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que a Etapa 19 acrescenta ao modelo?</p>
+    <div class="options">
+      <button class="option" data-key="a">uma camada de saída nova</button>
+      <button class="option" data-key="b">parâmetros de amostragem, que são treinados junto</button>
+      <button class="option" data-key="c">nada — o que muda é realimentar a saída na entrada</button>
+      <button class="option" data-key="d">um segundo modelo, que escolhe entre os candidatos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Nenhum parâmetro novo e nenhum gradiente. A repetição é o que transforma um classificador de próximo token num gerador (§1).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O modelo devolve logits <code>[1, T, V]</code>. Quais posições são usadas?</p>
+    <div class="options">
+      <button class="option" data-key="a">todas, somadas</button>
+      <button class="option" data-key="b">só a última — as <code>T−1</code> primeiras preveem tokens que você já tem</button>
+      <button class="option" data-key="c">só a primeira, que vê o contexto inteiro</button>
+      <button class="option" data-key="d">a do meio, por estabilidade numérica</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> É desperdício de cálculo, e deliberado: reaproveitar as anteriores exigiria guardar chaves e valores entre passos, que é o <em>KV cache</em> dos sistemas reais (§1).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que a janela deslizante corta pela esquerda?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque a previsão do próximo token depende muito mais do que veio logo antes</button>
+      <button class="option" data-key="b">porque os tokens da esquerda são sempre pontuação</button>
+      <button class="option" data-key="c">porque o array é mais rápido de cortar nesse lado</button>
+      <button class="option" data-key="d">porque a máscara causal exige isso</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Cortar pela direita descartaria justamente o contexto imediato, o mais informativo. O custo é real: fora da janela, o modelo esquece — não há memória nenhuma ali (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que o <code>Greedy</code> não precisa calcular o softmax?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque ele usa os logits negativos</button>
+      <button class="option" data-key="b">porque o softmax só é necessário no treino</button>
+      <button class="option" data-key="c">porque ele amostra antes de normalizar</button>
+      <button class="option" data-key="d">porque a exponencial é monótona — o maior logit é sempre o de maior probabilidade</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> A normalização não muda quem ganha. É por isso que o <code>argmax</code> pode agir direto sobre os logits (§3).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Com <code>z = [2.0, 1.0, 0.0, −1.0]</code>, o que <code>T = 0.5</code> faz?</p>
+    <div class="options">
+      <button class="option" data-key="a">espalha: o token 0 cai para <code>0.455</code></button>
+      <button class="option" data-key="b">concentra: o token 0 sobe de <code>0.644</code> para <code>0.865</code></button>
+      <button class="option" data-key="c">não muda nada, porque <code>0.5</code> é o valor neutro</button>
+      <button class="option" data-key="d">inverte a ordem dos candidatos</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Dividir por <code>T &lt; 1</code> aumenta as diferenças entre os logits, e o softmax amplifica diferenças exponencialmente. O valor neutro é <code>T = 1</code>, não <code>0.5</code> (§4).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Para onde a temperatura tende quando <code>T → 0</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">para a distribuição uniforme</button>
+      <button class="option" data-key="b">para uma divisão por zero, que quebra</button>
+      <button class="option" data-key="c">para o <code>Greedy</code>: a distribuição vira um pico no maior logit</button>
+      <button class="option" data-key="d">para uma distribuição invertida, com o pior token no topo</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Com <code>T = 0.1</code> o token 0 já tem <code>0.999955</code>. O <code>require(value > 0)</code> impede o <code>T = 0</code> exato, que seria a divisão da opção B (§4).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">O que o <code>top-k</code> resolve que a temperatura sozinha não resolve?</p>
+    <div class="options">
+      <button class="option" data-key="a">a temperatura mexe na distribuição inteira e não distingue "quarto candidato razoável" de "token absurdo"; o <code>top-k</code> corta pelo ranking</button>
+      <button class="option" data-key="b">o <code>top-k</code> é mais rápido de calcular</button>
+      <button class="option" data-key="c">a temperatura não funciona com vocabulários grandes</button>
+      <button class="option" data-key="d">o <code>top-k</code> torna a geração determinística</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Com <code>T = 2</code>, o pior token dos quatro já recebe <code>10%</code>. Um único token improvável desvia o texto, e os passos seguintes ficam condicionados por esse desvio (§5).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que o <code>keepTopK</code> põe <code>-inf</code> nos logits em vez de zerar as probabilidades depois?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque zerar depois daria erro de tipo</button>
+      <button class="option" data-key="b">porque <code>-inf</code> é mais rápido que <code>0.0</code></button>
+      <button class="option" data-key="c">porque as probabilidades não podem ser modificadas</button>
+      <button class="option" data-key="d">porque <code>exp(-inf) = 0</code> exatamente, então eles somem no próprio softmax, sem uma segunda normalização</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Zerar as probabilidades depois exigiria renormalizar o que sobrou. Cortando antes, o softmax já entrega a distribuição certa entre os sobreviventes (§5).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Com <code>p = [0.6439, 0.2369, 0.0871, 0.0321]</code> e <code>u = 0.65</code>, qual token sai?</p>
+    <div class="options">
+      <button class="option" data-key="a">o token 0, porque <code>0.65</code> é maior que <code>0.5</code></button>
+      <button class="option" data-key="b">o token 1: a acumulada passa de <code>0.65</code> em <code>0.8808</code></button>
+      <button class="option" data-key="c">o token 2, o mais próximo de <code>0.65</code></button>
+      <button class="option" data-key="d">o token 3, porque a busca vai até o fim</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> A CDF é <code>[0.6439, 0.8808, 0.9679, 1.0]</code>. O primeiro valor acima de <code>0.65</code> é <code>0.8808</code>, na posição 1. A fatia do token 1 vai de <code>0.6439</code> a <code>0.8808</code>, e tem largura <code>0.2369</code> — a probabilidade dele (§6).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que a amostragem por CDF precisa de um caso de saída quando nenhum índice satisfaz a condição?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>u</code> pode sair negativo</button>
+      <button class="option" data-key="b">porque a distribuição pode estar vazia</button>
+      <button class="option" data-key="c">porque a soma acumulada pode parar um epsilon abaixo de 1 por arredondamento, e <code>u</code> pode cair nessa fresta</button>
+      <button class="option" data-key="d">porque o <code>top-k</code> deixa posições com probabilidade zero</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Acontece raramente e depende do sorteio, então o teste passa quase sempre. Quando acontece, o retorno é um índice inválido que só estoura mais tarde, no <code>decode</code>. O teste força a situação com um gerador que devolve <code>0.9999999999999999</code> (§6).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">A última posição do contexto é <code>context.length - 1</code>. Por que não <code>contextLength - 1</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque nos primeiros passos a sequência ainda é menor que a janela, e a posição não existiria</button>
+      <button class="option" data-key="b">porque <code>contextLength</code> é privado no modelo</button>
+      <button class="option" data-key="c">porque os dois são sempre iguais, e a escolha é estilística</button>
+      <button class="option" data-key="d">porque a janela corta pela direita</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Com prompt <code>[0,1,2]</code> e <code>contextLength = 4</code>, o contexto tem três tokens e a última posição é a 2. O erro só apareceria em prompts curtos — que é o caso comum (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">O que aconteceria se a geração <strong>não</strong> rodasse dentro de <code>noGrad</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada: sem <code>backward()</code>, o grafo é inofensivo</button>
+      <button class="option" data-key="b">a geração ficaria determinística</button>
+      <button class="option" data-key="c">o modelo passaria a treinar durante a geração</button>
+      <button class="option" data-key="d">cem tokens gerados deixariam cem grafos na memória, e os parâmetros ficariam com gradiente que o próximo treino somaria ao seu</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> São dois efeitos: memória e contaminação. A opção C exagera — sem <code>step()</code> nenhum parâmetro muda —, mas o gradiente sujo distorce o passo seguinte (§7).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Com logits <code>[3, 1, 1, 0]</code> e <code>k = 2</code>, quantos candidatos sobrevivem, e por quê?</p>
+    <div class="options">
+      <button class="option" data-key="a">dois: o corte usa o índice para desempatar</button>
+      <button class="option" data-key="b">três: os dois empatados em <code>1</code> ficam, porque desempatar por índice escolheria pela ordem do vocabulário</button>
+      <button class="option" data-key="c">um: empates são descartados por precaução</button>
+      <button class="option" data-key="d">quatro: qualquer empate desliga o corte</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> O corte é por limiar, não por contagem: tudo que alcança o k-ésimo maior logit fica. Desempatar por índice faria a escolha depender da ordem alfabética do vocabulário, e essa não é uma razão (§5).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">O modelo treinado num corpus cíclico gera <code>[0,1,2,0,1,2,...]</code> em <code>Greedy</code>. Por que esse teste vale mais que os testes de unidade das etapas anteriores?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque ele é mais rápido de rodar</button>
+      <button class="option" data-key="b">porque ele testa o <code>Sampler</code>, que os outros não testam</button>
+      <button class="option" data-key="c">porque ele é o único que exercita a cadeia inteira de ponta a ponta — um bug em qualquer das 19 etapas o derruba</button>
+      <button class="option" data-key="d">porque ele não depende de aleatoriedade</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> Gradient check confirma uma operação; o <code>GPTSpec</code> confirma um forward. Nenhum dos dois mostra se as peças <em>juntas</em> aprendem. A opção D é verdadeira mas não é o motivo — é o que torna o teste possível, e não o que o torna valioso (§1).</div>
+  </div>
+
+  <footer>mini-gpt · theory/19-inference-generation · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. O laço autoregressivo, a janela deslizante e as três estratégias estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 19-inference-generation.md e generation.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

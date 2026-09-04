@@ -1,0 +1,318 @@
+<title>Exercícios — Etapa 7: Tokenização — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Tokenização</h1>
+    <div class="meta">mini-gpt<br>texto → inteiros</div>
+    <div class="sub">Etapa 7 — Tokenização · 10 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="07-tokenization.md">07-tokenization.md</a> e <a href="tokenization.html">tokenization.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que este projeto usa tokenização character-level em vez de BPE (o que GPT-4 usa)?</p>
+    <div class="options">
+      <button class="option" data-key="a">character-level produz sequências mais curtas que BPE</button>
+      <button class="option" data-key="b">BPE não existe em Scala</button>
+      <button class="option" data-key="c">é a opção mais simples de implementar do zero — vocabulário pequeno, nenhuma palavra fica "fora do vocabulário", ao custo de sequências mais longas por caractere</button>
+      <button class="option" data-key="d">character-level dá um modelo mais preciso</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> BPE aprende a agrupar sequências frequentes de caracteres num único token — mais eficiente, mas bem mais complexo de implementar. Character-level troca eficiência por simplicidade (§1 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que é <code>vocabSize</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">um número fixo, escolhido antes de olhar o corpus (ex.: sempre 128)</button>
+      <button class="option" data-key="b">a quantidade de caracteres <strong>únicos</strong> que aparecem no corpus — uma consequência do texto, não uma escolha prévia</button>
+      <button class="option" data-key="c">o comprimento total do corpus em caracteres</button>
+      <button class="option" data-key="d">o número de palavras distintas do corpus</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Pra um texto em português, isso costuma ficar entre 60 e 100 (letras minúsculas/maiúsculas, acentos, pontuação, espaço, quebra de linha) — mas é sempre derivado do corpus real, não um número mágico.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Por que ordenar os caracteres únicos (alfabeticamente) antes de atribuir os índices, em vez de usar a ordem de iteração de um <code>Set</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">ordenar deixa o encode/decode mais rápido</button>
+      <button class="option" data-key="b">não faz diferença nenhuma, é só estilo</button>
+      <button class="option" data-key="c">caracteres ordenados ocupam menos espaço em memória</button>
+      <button class="option" data-key="d">determinismo: a ordem de iteração de um <code>Set</code> não é garantida em Scala — sem ordenar, o mesmo corpus poderia gerar mapeamentos <code>charToIdx</code> diferentes em execuções diferentes, quebrando a compatibilidade entre treino e geração</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Um modelo treinado com um mapeamento fica incompatível com outro treinado (ou usado pra gerar texto) com um mapeamento diferente do mesmo corpus — ordenar garante que o mapeamento seja sempre o mesmo (§2 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext"><code>charToIdx</code> e <code>idxToChar</code> guardam a mesma informação?</p>
+    <div class="options">
+      <button class="option" data-key="a">sim — são inversos um do outro: se <code>charToIdx('a') == 0</code>, então <code>idxToChar(0) == 'a'</code>, sempre</button>
+      <button class="option" data-key="b">não, <code>idxToChar</code> é só usado durante o treino, <code>charToIdx</code> só durante a geração</button>
+      <button class="option" data-key="c">não, eles podem divergir se o corpus for grande o suficiente</button>
+      <button class="option" data-key="d">não são relacionados — cada um é construído de forma independente do outro</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> São dois maps derivados do mesmo vocabulário ordenado — um mapeia caractere→índice, o outro índice→caractere, mas representam exatamente a mesma correspondência (§2 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que verificar <code>decode(encode(text)) == text</code> é importante, mesmo <code>encode</code>/<code>decode</code> parecendo triviais?</p>
+    <div class="options">
+      <button class="option" data-key="a">é só uma formalidade — na prática esses dois métodos nunca têm bug</button>
+      <button class="option" data-key="b">serve pra medir a performance do tokenizador</button>
+      <button class="option" data-key="c">um mapeamento assimétrico (ex.: <code>charToIdx</code>/<code>idxToChar</code> construídos a partir de conjuntos ordenados de formas diferentes) passaria despercebido em testes superficiais, mas corromperia todo o pipeline de treino silenciosamente</button>
+      <button class="option" data-key="d">essa verificação é opcional, o roadmap não pede isso</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É exatamente o tipo de bug silencioso que o <code>.md</code> destaca (§3) — o texto "parece" ter sido tokenizado certo, mas o modelo estaria aprendendo sobre um mapeamento inconsistente.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Ao montar um exemplo de treino com <code>contextLength=4</code>, de onde vem o <code>target</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">de uma posição aleatória diferente do corpus, sem relação com o <code>input</code></button>
+      <button class="option" data-key="b">é sempre igual ao <code>input</code>, sem deslocamento nenhum</button>
+      <button class="option" data-key="c">é o <code>input</code> invertido (últimos tokens primeiro)</button>
+      <button class="option" data-key="d">é a <strong>mesma</strong> janela do <code>input</code>, deslocada uma posição à direita no corpus — <code>target[i]</code> é o token que realmente segue <code>input[i]</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Captura a tarefa do modelo: prever o próximo token em toda posição da sequência, dado tudo que veio antes (§4 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Corpus codificado tem <code>corpusLength = 10</code> tokens, <code>contextLength = 4</code>. Qual é o intervalo válido de <code>start</code> pra amostrar uma janela (input+target)?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>0</code> até <code>10-4 = 6</code> (inclusive)</button>
+      <button class="option" data-key="b"><code>0</code> até <code>10-4-1 = 5</code> (inclusive) — porque o par (input,target) exige <code>contextLength+1</code> tokens consecutivos, não só <code>contextLength</code></button>
+      <button class="option" data-key="c"><code>0</code> até <code>10</code> (qualquer posição serve)</button>
+      <button class="option" data-key="d"><code>4</code> até <code>10</code> (start nunca pode ser 0)</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> <code>target = corpus[start+1 : start+contextLength+1]</code> precisa que <code>start+contextLength</code> seja um índice válido do corpus (≤ <code>corpusLength-1</code>) — daí o <code>-1</code> extra em relação ao limite ingênuo (§4 do <code>.md</code>).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Usando <code>encode("abacate") = [0,1,0,2,0,4,3]</code> (<code>charToIdx = {a:0,b:1,c:2,e:3,t:4}</code>) e <code>contextLength=4</code>, <code>start=1</code>: qual é o <code>target</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>[1,0,2,0]</code> ("baca") — esse é o <code>input</code>, não o <code>target</code></button>
+      <button class="option" data-key="b"><code>[0,1,0,2]</code> ("abac")</button>
+      <button class="option" data-key="c"><code>[0,2,0,4]</code> ("acat") — <code>target = corpus[2:6] = [0,2,0,4]</code></button>
+      <button class="option" data-key="d"><code>[4,3]</code> ("te")</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> <code>input = corpus[1:5] = [1,0,2,0]</code> ("baca"); <code>target = corpus[2:6] = [0,2,0,4]</code> ("acat") — a mesma janela, uma posição à frente no corpus original.</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Um batch de <code>B=8</code> janelas é montado amostrando 8 valores de <code>start</code>. Essas 8 posições precisam ser contíguas ou ordenadas no corpus?</p>
+    <div class="options">
+      <button class="option" data-key="a">não — cada janela é amostrada de forma independente; a única exigência é que cada <code>start</code>, isoladamente, caia no intervalo válido (§4/§5 do <code>.md</code>)</button>
+      <button class="option" data-key="b">sim, precisam ser consecutivas (<code>start, start+1, start+2, ...</code>)</button>
+      <button class="option" data-key="c">sim, precisam estar em ordem crescente, mas podem ter buracos</button>
+      <button class="option" data-key="d">não podem se sobrepor entre si (duas janelas não podem compartilhar nenhum token)</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> É exatamente essa independência que permite processar o batch inteiro em paralelo (matmul em batch, já pronto desde a Etapa 3) — sobreposição entre janelas de linhas diferentes do batch é normal e não é um problema.</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">Depois de <code>encode</code>, por que o array de índices ainda não é algo que o modelo consegue processar diretamente (somar, multiplicar)?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque índices inteiros não cabem num <code>Tensor</code> (que só guarda <code>Double</code>)</button>
+      <button class="option" data-key="b">na verdade já é — o modelo processa os índices diretamente, sem nenhuma etapa intermediária</button>
+      <button class="option" data-key="c">porque <code>Gradcheck</code> não funciona com valores inteiros</button>
+      <button class="option" data-key="d">um índice é só um rótulo arbitrário — não carrega informação numérica útil pra somar/multiplicar (o índice 5 não é "mais" nem "menos" que o índice 3 em nenhum sentido semântico). A Etapa 9 (Embedding) troca cada índice pela linha correspondente de uma tabela de vetores treináveis, é aí que a informação útil começa a existir</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> É a ligação com a próxima etapa (§6 do <code>.md</code>): tokenização produz rótulos discretos; Embedding é quem transforma esses rótulos em vetores contínuos que o resto da rede pode de fato processar com gradiente.</div>
+  </div>
+
+  <footer>mini-gpt — etapa 7 · tokenização · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. O deslocamento entre input e target está sólido.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 07-tokenization.md e tokenization.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

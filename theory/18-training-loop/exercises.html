@@ -1,0 +1,367 @@
+<title>Exercícios — Etapa 18: Loop de treinamento — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+      --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+      --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    --diff-hard: #ff8f8f; --diff-hard-soft: #4a1f1f; --diff-challenge: #c9a8ff; --diff-challenge-soft: #322049;
+    --ok: #7fe0a0; --ok-soft: #123a24; --bad: #ff8f8f; --bad-soft: #4a1f1f;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+    --diff-hard: #b23a3a; --diff-hard-soft: #f4d9d9; --diff-challenge: #6a3fa0; --diff-challenge-soft: #e6ddf4;
+    --ok: #1f7a3f; --ok-soft: #d5efdd; --bad: #b23a3a; --bad-soft: #f4d9d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  p.intro { max-width: 66ch; color: var(--ink-soft); font-size: 0.95rem; }
+  a { color: var(--accent2); }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+
+  .scoreboard {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 12px 18px; margin-bottom: 28px;
+  }
+  .scoreboard .label { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .scoreboard .score { font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--ink); }
+  .progress-track { flex: 1 1 160px; height: 8px; background: var(--code-bg); border: 1px solid var(--line); min-width: 120px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent2); transition: width 0.25s ease; }
+  .reset-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink); background: var(--code-bg); border: 1px solid var(--line-strong);
+    padding: 6px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--ghost); }
+
+  .summary {
+    display: none; border: 1.5px solid var(--accent2); background: var(--accent2-soft);
+    padding: 16px 20px; margin-bottom: 28px; font-size: 0.95rem;
+  }
+  .summary.show { display: block; }
+  .summary .tag { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.4em; }
+
+  .question {
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qnum { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid transparent;
+  }
+  .badge-facil { color: var(--accent2); background: var(--accent2-soft); border-color: var(--accent2); }
+  .badge-medio { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badge-dificil { color: var(--diff-hard); background: var(--diff-hard-soft); border-color: var(--diff-hard); }
+  .badge-desafio { color: var(--diff-challenge); background: var(--diff-challenge-soft); border-color: var(--diff-challenge); }
+
+  .qtext { margin: 0 0 14px; max-width: 66ch; }
+  .qtext pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 10px 0 0; }
+  .options { display: grid; gap: 8px; }
+  .option {
+    display: block; width: 100%; text-align: left; font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--paper-2); border: 1.5px solid var(--line); padding: 9px 14px; cursor: pointer;
+  }
+  .option:hover:not(.locked) { border-color: var(--line-strong); background: var(--code-bg); }
+  .option.locked { cursor: default; }
+  .option.correct { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .option.incorrect { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+
+  .explanation {
+    display: none; margin-top: 14px; padding: 10px 14px; font-size: 0.9rem;
+    border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Exercícios — Loop de treinamento</h1>
+    <div class="meta">mini-gpt<br>onde as dezessete<br>etapas se encontram</div>
+    <div class="sub">Etapa 18 — Loop de treinamento · 14 questões · fácil → desafio</div>
+  </div>
+
+  <p class="intro">
+    Baseado em <a href="18-training-loop.md">18-training-loop.md</a> e <a href="training-loop.html">training-loop.html</a>.
+    Cada questão tem uma única alternativa correta — clique numa opção pra ver o resultado e a explicação na hora.
+  </p>
+
+  <div class="scoreboard">
+    <span class="label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="score" id="scoreText">0 / 0 respondidas</span>
+    <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="tag">Resultado final</span>
+    <span id="summaryText"></span>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q1</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Onde o <code>zeroGrad()</code> entra na sequência de um passo?</p>
+    <div class="options">
+      <button class="option" data-key="a">depois do <code>backward()</code>, para limpar o que sobrou</button>
+      <button class="option" data-key="b">entre o cálculo da perda e o <code>backward()</code></button>
+      <button class="option" data-key="c">depois do <code>step()</code>, no fim do passo</button>
+      <button class="option" data-key="d">antes de amostrar o lote</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Zerar depois do <code>backward()</code> apaga exatamente o que se acabou de calcular — o otimizador recebe zeros e nenhum parâmetro se move. A opção C tem o mesmo efeito, um passo atrasado (§1).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q2</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O <code>optimizer.zeroGrad()</code> zera o quê, exatamente?</p>
+    <div class="options">
+      <button class="option" data-key="a">todos os nós do grafo, da perda até as folhas</button>
+      <button class="option" data-key="b">os valores dos parâmetros</button>
+      <button class="option" data-key="c">o gradiente dos parâmetros da lista, e só</button>
+      <button class="option" data-key="d">o estado <code>m</code> e <code>v</code> do otimizador</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> E é suficiente: cada <code>forward</code> constrói um grafo novo, cujos nós intermediários já nascem com gradiente zero. Só os parâmetros atravessam os passos. A opção D descreveria um otimizador que esquece o momento a cada passo (§1).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q3</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">O que é a norma global do gradiente?</p>
+    <div class="options">
+      <button class="option" data-key="a">a raiz da soma dos quadrados de todos os gradientes de todos os parâmetros</button>
+      <button class="option" data-key="b">o maior gradiente encontrado no modelo</button>
+      <button class="option" data-key="c">a média das normas de cada parâmetro</button>
+      <button class="option" data-key="d">a norma do gradiente da perda</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Todos os parâmetros tratados como um vetor só. É o comprimento do passo que o modelo está prestes a dar (§2).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q4</span><span class="badge badge-facil">fácil</span></div>
+    <p class="qtext">Para que serve o aquecimento (<em>warmup</em>) do learning rate?</p>
+    <div class="options">
+      <button class="option" data-key="a">para o modelo carregar os dados antes de treinar</button>
+      <button class="option" data-key="b">para compensar o custo do primeiro <code>forward</code></button>
+      <button class="option" data-key="c">para o gradiente estabilizar antes do <code>backward</code></button>
+      <button class="option" data-key="d">porque o primeiro passo do Adam tem tamanho <code>lr</code> cheio, guiado pela pior estimativa do treino inteiro</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> A Etapa 17 §5 mostrou que o primeiro passo do Adam vale exatamente <code>lr</code> para todo parâmetro — e ele vem de um único lote com pesos aleatórios. O aquecimento reduz o estrago (§3).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q5</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Você esquece o <code>zeroGrad()</code> por completo. Qual é o sintoma?</p>
+    <div class="options">
+      <button class="option" data-key="a">a perda vira <code>NaN</code> no segundo passo</button>
+      <button class="option" data-key="b">o programa lança exceção ao acumular</button>
+      <button class="option" data-key="c">nenhum sintoma óbvio — o Adam normaliza a escala, e só a direção do passo sai errada</button>
+      <button class="option" data-key="d">o gradiente vira zero, e nada se move</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> No passo 10 o gradiente é a soma dos dez lotes vistos. Com SGD isso multiplicaria o passo por dez e seria visível; com Adam a divisão por <code>√v̂</code> absorve a escala. O modelo anda misturando dados antigos com atuais, e piora conforme avança (§1).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q6</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Gradientes <code>a = [3, −4]</code> e <code>b = [0.1]</code>, com <code>maxNorm = 1.0</code>. Por que clipar por parâmetro está errado?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque é mais lento de calcular</button>
+      <button class="option" data-key="b">porque <code>b</code> não seria cortado, e a razão <code>a₀/b₀</code> cairia de 30 para 6 — a direção do passo gira</button>
+      <button class="option" data-key="c">porque a norma de <code>b</code> é menor que <code>maxNorm</code>, o que é inválido</button>
+      <button class="option" data-key="d">porque só a norma global é derivável</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Encolher tudo pelo mesmo fator preserva a direção exatamente. Fatores distintos deram a <code>b</code> um peso relativo cinco vezes maior do que o gradiente pediu, e o modelo anda numa direção que ninguém calculou (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q7</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Com <code>lrMax = 3e-4</code> e <code>lrMin = 3e-5</code>, quanto vale a taxa no meio exato do cosseno?</p>
+    <div class="options">
+      <button class="option" data-key="a"><code>1.65e-4</code> — a média aritmética dos extremos</button>
+      <button class="option" data-key="b"><code>1.5e-4</code> — metade de <code>lrMax</code></button>
+      <button class="option" data-key="c"><code>9.5e-5</code> — a média geométrica</button>
+      <button class="option" data-key="d">depende de <code>totalSteps</code></button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> No meio, <code>progresso = 0.5</code> e <code>cos(π/2) = 0</code>, então a fórmula vira <code>lrMin + ½(lrMax − lrMin)</code>. É assim que se confere o schedule sem simular nada (§3).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q8</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que o progresso do cosseno é travado em 1 depois de <code>totalSteps</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">para evitar divisão por zero</button>
+      <button class="option" data-key="b">porque o treino sempre para exatamente em <code>totalSteps</code></button>
+      <button class="option" data-key="c">para a taxa chegar a zero no fim</button>
+      <button class="option" data-key="d">porque sem o travamento o cosseno voltaria a subir, e o modelo desandaria depois de já ter convergido</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Meia volta de cosseno desce; a volta seguinte sobe. A opção B é a suposição perigosa — um treino retomado de checkpoint passa de <code>totalSteps</code> com facilidade (§3).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q9</span><span class="badge badge-medio">médio</span></div>
+    <p class="qtext">Por que a avaliação roda dentro de <code>Tensor.noGrad</code>?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque a perda de validação usa uma fórmula diferente</button>
+      <button class="option" data-key="b">para não construir grafo nem sujar o gradiente dos parâmetros antes do próximo passo de treino</button>
+      <button class="option" data-key="c">porque o modelo não pode ser lido durante o treino</button>
+      <button class="option" data-key="d">para que a perda de validação seja sempre menor</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> São duas coisas: memória (cada lote penduraria um grafo inteiro) e correção. O teste que fixa isso confirma que, depois de três lotes de avaliação, todo gradiente continua exatamente zero (§5).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q10</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Por que <code>clipByGlobalNorm</code> devolve a norma de <strong>antes</strong> do corte?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque a de depois é cara de calcular</button>
+      <button class="option" data-key="b">por engano; a de depois seria mais útil</button>
+      <button class="option" data-key="c">porque a de depois não informa nada: vale <code>maxNorm</code> quando houve corte, e é igual à de antes quando não houve</button>
+      <button class="option" data-key="d">porque a de antes é sempre menor</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> A de antes é diagnóstico: vivendo em <code>0.3</code>, o clipping nunca age e o teto está frouxo; vivendo em <code>50</code>, algo está errado antes do clipping — provavelmente inicialização ou taxa (§2).</div>
+  </div>
+
+  <div class="question" data-answer="a">
+    <div class="qhead"><span class="qnum">Q11</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Você salva um checkpoint com os pesos, mas sem <code>m</code>, <code>v</code> e <code>t</code>. O que acontece ao retomar?</p>
+    <div class="options">
+      <button class="option" data-key="a">a correção de viés trata o próximo passo como o primeiro, e o modelo dá um passo de tamanho <code>lr</code> cheio guiado por um único lote</button>
+      <button class="option" data-key="b">nada: <code>m</code> e <code>v</code> são recalculados a partir dos pesos</button>
+      <button class="option" data-key="c">o carregamento falha, porque o arquivo fica incompleto</button>
+      <button class="option" data-key="d">o treino recomeça exatamente do zero</button>
+    </div>
+    <div class="explanation"><strong>Resposta: A.</strong> Depois de mil passos de momento acumulado, é um degrau na curva que ninguém sabe explicar. A opção B é o mal-entendido central: <code>m</code> e <code>v</code> são história dos gradientes, e não uma função dos pesos (§6).</div>
+  </div>
+
+  <div class="question" data-answer="d">
+    <div class="qhead"><span class="qnum">Q12</span><span class="badge badge-dificil">difícil</span></div>
+    <p class="qtext">Com <code>V = 65</code>, a perda do primeiro passo sai em <code>2.1</code>. O que suspeitar?</p>
+    <div class="options">
+      <button class="option" data-key="a">nada — abaixo de <code>log(V)</code> é sempre bom sinal</button>
+      <button class="option" data-key="b">que o learning rate está alto demais</button>
+      <button class="option" data-key="c">que o corpus é pequeno demais</button>
+      <button class="option" data-key="d">que o modelo está vendo a resposta — o suspeito é a máscara causal</button>
+    </div>
+    <div class="explanation"><strong>Resposta: D.</strong> Um modelo não treinado não tem como ser melhor que o chute uniforme, que paga <code>log(65) = 4.174</code>. Ser melhor no primeiro passo significa que informação do futuro está vazando para a previsão (§7).</div>
+  </div>
+
+  <div class="question" data-answer="b">
+    <div class="qhead"><span class="qnum">Q13</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">O laço acumula o histórico com <code>::</code> e inverte no fim. Por que não usar <code>:+</code> e já sair na ordem certa?</p>
+    <div class="options">
+      <button class="option" data-key="a">porque <code>:+</code> não existe em <code>List</code></button>
+      <button class="option" data-key="b">porque <code>::</code> insere em tempo constante, enquanto <code>:+</code> percorre a lista inteira a cada passo</button>
+      <button class="option" data-key="c">porque <code>:+</code> devolveria uma lista mutável</button>
+      <button class="option" data-key="d">porque a ordem invertida é a que o gráfico de perda espera</button>
+    </div>
+    <div class="explanation"><strong>Resposta: B.</strong> Com <code>:+</code>, mil passos custariam meio milhão de operações só para montar o histórico. O <code>reverse</code> final é uma passada só. A opção D é o erro que o teste <em>keep the history in chronological order</em> existe para pegar (§4).</div>
+  </div>
+
+  <div class="question" data-answer="c">
+    <div class="qhead"><span class="qnum">Q14</span><span class="badge badge-desafio">desafio</span></div>
+    <p class="qtext">A perda de treino está em <code>0.5</code> e a de validação em <code>2.3</code>, subindo. Qual é a primeira providência?</p>
+    <div class="options">
+      <button class="option" data-key="a">conferir a ordem do <code>zeroGrad</code> no laço</button>
+      <button class="option" data-key="b">aumentar o learning rate, porque o treino travou</button>
+      <button class="option" data-key="c">nenhuma no código: é overfitting — aumentar o <code>weightDecay</code>, reduzir o modelo, ou arranjar mais texto</button>
+      <button class="option" data-key="d">desligar o gradient clipping</button>
+    </div>
+    <div class="explanation"><strong>Resposta: C.</strong> É o único perfil de curva da lista que <strong>não</strong> é bug. O laço está funcionando exatamente como deveria, e a divergência entre as duas curvas é a prova disso — o modelo está memorizando em vez de aprender a estrutura (§5 e §7).</div>
+  </div>
+
+  <footer>mini-gpt · theory/18-training-loop · exercícios</footer>
+</div>
+
+<script>
+  const questions = Array.from(document.querySelectorAll('.question'));
+  const total = questions.length;
+  const progressFill = document.getElementById('progressFill');
+  const scoreText = document.getElementById('scoreText');
+  const summary = document.getElementById('summary');
+  const summaryText = document.getElementById('summaryText');
+
+  function updateScore() {
+    const answered = questions.filter(q => q.classList.contains('answered'));
+    const correct = answered.filter(q => q.dataset.result === 'correct');
+    progressFill.style.width = (answered.length / total * 100) + '%';
+    scoreText.textContent = correct.length + ' / ' + answered.length + ' corretas (' + answered.length + '/' + total + ' respondidas)';
+
+    if (answered.length === total) {
+      const pct = correct.length / total;
+      let msg;
+      if (pct >= 0.8) msg = 'Mandou bem — ' + correct.length + '/' + total + '. A ordem das operações, a norma global e o schedule estão sólidos.';
+      else if (pct >= 0.5) msg = 'Quase lá — ' + correct.length + '/' + total + '. Vale reler as seções onde errou antes de implementar.';
+      else msg = 'Só ' + correct.length + '/' + total + '. Recomendo revisitar 18-training-loop.md e training-loop.html com calma antes de seguir.';
+      summaryText.textContent = msg;
+      summary.classList.add('show');
+    } else {
+      summary.classList.remove('show');
+    }
+  }
+
+  questions.forEach(q => {
+    const correctKey = q.dataset.answer;
+    const options = Array.from(q.querySelectorAll('.option'));
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        const chosenKey = opt.dataset.key;
+        q.dataset.result = (chosenKey === correctKey) ? 'correct' : 'incorrect';
+        options.forEach(o => {
+          o.classList.add('locked');
+          if (o.dataset.key === correctKey) o.classList.add('correct');
+        });
+        if (chosenKey !== correctKey) opt.classList.add('incorrect');
+        q.querySelector('.explanation').classList.add('show');
+        updateScore();
+      });
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+  updateScore();
+</script>

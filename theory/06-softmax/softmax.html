@@ -1,0 +1,183 @@
+<title>Softmax — mini-gpt</title>
+<style>
+  :root {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+      --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+      --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c2540; --paper-2: #0f2d4c; --ink: #e8f1ff; --ink-soft: #9fb6d6;
+    --line: #2c5178; --line-strong: #47749f; --accent: #ffcf6b; --accent-soft: #4a3a17;
+    --accent2: #7fe0d6; --accent2-soft: #113c3d; --ghost: #274a6e; --plate-bg: #0f2c4a; --code-bg: #0a2036;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef2f9; --paper-2: #e2e9f4; --ink: #16324f; --ink-soft: #4b6584;
+    --line: #b9c8e0; --line-strong: #7b93b8; --accent: #a8641a; --accent-soft: #f3ddb8;
+    --accent2: #1f7a84; --accent2-soft: #d3ecec; --ghost: #c3cee2; --plate-bg: #ffffff; --code-bg: #dfe7f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, color-mix(in srgb, var(--line) 35%, transparent) 28px),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .mono { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  .titleblock {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end;
+    border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px 22px; margin-bottom: 40px;
+  }
+  .titleblock h1 { margin: 0; font-family: "JetBrains Mono", monospace; font-size: 1.5rem; letter-spacing: 0.02em; text-wrap: balance; }
+  .titleblock .sub {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase;
+    letter-spacing: 0.12em; border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .titleblock .meta { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; text-align: right; white-space: nowrap; }
+  h2 {
+    font-family: "JetBrains Mono", monospace; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent2); margin: 3.2em 0 0.9em; text-wrap: balance; display: flex; align-items: baseline; gap: 0.6em;
+  }
+  h2 .num { color: var(--ink-soft); opacity: 0.7; }
+  h2::after { content: ""; flex: 1; border-bottom: 1px dashed var(--line-strong); margin-bottom: 0.35em; }
+  p { max-width: 66ch; }
+  strong { color: var(--accent); font-weight: 600; }
+  .figure { max-width: 100%; margin: 1.6em 0 1.8em; border: 1.5px solid var(--line-strong); background: var(--plate-bg); padding: 18px; }
+  .figure .scroll { overflow-x: auto; }
+  .figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 0.85rem; color: var(--ink-soft); }
+  .caption .tag { font-family: "JetBrains Mono", monospace; color: var(--accent2); letter-spacing: 0.06em; margin-right: 0.6em; }
+  code, .code-inline { font-family: "JetBrains Mono", monospace; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.88em; }
+  pre { font-family: "JetBrains Mono", monospace; background: var(--code-bg); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; font-size: 0.84rem; line-height: 1.55; }
+  .lbl { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lbl.strong { fill: var(--ink); }
+  .node { fill: var(--plate-bg); stroke: var(--line-strong); stroke-width: 1.5; }
+  .node.hot { fill: var(--accent2-soft); stroke: var(--accent2); }
+  .arrow { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+  .arrow.hot { stroke: var(--accent2); stroke-width: 1.6; }
+  .cell { stroke: var(--line-strong); stroke-width: 1; }
+  .cell.diag { fill: var(--accent-soft); }
+  .cell.off { fill: var(--accent2-soft); }
+  .cell-text { font-family: "JetBrains Mono", monospace; font-size: 11px; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; }
+  footer { margin-top: 4em; padding-top: 1.2em; border-top: 1.5px solid var(--line-strong); font-size: 0.78rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line-strong)"></path></marker>
+    <marker id="arrowhead-hot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"></path></marker>
+  </defs>
+</svg>
+
+<div class="sheet">
+  <div class="titleblock">
+    <h1>Softmax</h1>
+    <div class="meta">mini-gpt<br>normalização</div>
+    <div class="sub">Folha 01 · Etapa 6 — Softmax e Log-Softmax · guia visual</div>
+  </div>
+
+  <h2><span class="num">§1</span> Elemento-a-elemento vs. softmax: quem depende de quem</h2>
+  <p>
+    Toda operação até a Etapa 5 tinha dependência <strong>1 pra 1</strong>: a saída na posição <code>i</code> só
+    olhava a entrada na posição <code>i</code>. Softmax quebra isso — cada saída depende de <strong>todas</strong>
+    as entradas, porque toda entrada participa da soma do denominador.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 460 220" width="460">
+        <text x="70" y="18" class="lbl strong" text-anchor="middle">relu/exp/... (Etapa 5)</text>
+        <circle cx="40" cy="50" r="14" class="node"></circle><text x="40" y="50" class="cell-text">x₀</text>
+        <circle cx="100" cy="50" r="14" class="node"></circle><text x="100" y="50" class="cell-text">x₁</text>
+        <circle cx="40" cy="110" r="14" class="node"></circle><text x="40" y="110" class="cell-text">s₀</text>
+        <circle cx="100" cy="110" r="14" class="node"></circle><text x="100" y="110" class="cell-text">s₁</text>
+        <path d="M40,64 L40,96" class="arrow" marker-end="url(#arrowhead)"></path>
+        <path d="M100,64 L100,96" class="arrow" marker-end="url(#arrowhead)"></path>
+        <text x="70" y="150" class="lbl" text-anchor="middle">cada saída só "ouve" sua própria entrada</text>
+
+        <text x="360" y="18" class="lbl strong" text-anchor="middle">softmax (Etapa 6)</text>
+        <circle cx="330" cy="50" r="14" class="node hot"></circle><text x="330" y="50" class="cell-text">x₀</text>
+        <circle cx="390" cy="50" r="14" class="node hot"></circle><text x="390" y="50" class="cell-text">x₁</text>
+        <circle cx="330" cy="110" r="14" class="node hot"></circle><text x="330" y="110" class="cell-text">s₀</text>
+        <circle cx="390" cy="110" r="14" class="node hot"></circle><text x="390" y="110" class="cell-text">s₁</text>
+        <path d="M330,64 L330,96" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M330,64 L385,96" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M390,64 L335,96" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <path d="M390,64 L390,96" class="arrow hot" marker-end="url(#arrowhead-hot)"></path>
+        <text x="360" y="150" class="lbl" text-anchor="middle">todo sᵢ depende de todo xⱼ</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 1</span>É por isso que o Jacobiano de softmax é uma matriz densa <code>N×N</code>, não um vetor de derivadas independentes como nas operações anteriores.</div>
+  </div>
+
+  <h2><span class="num">§2</span> O Jacobiano <code class="code-inline">diag(s) − s·sᵀ</code></h2>
+  <p>
+    Pra <code>s = softmax([1,2,3]) ≈ [0.09003, 0.24473, 0.66524]</code>: a diagonal usa <code>sᵢ(1-sᵢ)</code>
+    (laranja), fora da diagonal usa <code>-sᵢsⱼ</code> (verde-água) — e a matriz é simétrica.
+  </p>
+
+  <div class="figure">
+    <div class="scroll">
+      <svg viewBox="0 0 340 340" width="340">
+        <!-- header row/col labels -->
+        <text x="90" y="20" class="lbl strong" text-anchor="middle">x₀</text>
+        <text x="180" y="20" class="lbl strong" text-anchor="middle">x₁</text>
+        <text x="270" y="20" class="lbl strong" text-anchor="middle">x₂</text>
+        <text x="30" y="80" class="lbl strong" text-anchor="middle">s₀</text>
+        <text x="30" y="170" class="lbl strong" text-anchor="middle">s₁</text>
+        <text x="30" y="260" class="lbl strong" text-anchor="middle">s₂</text>
+
+        <rect x="45" y="35" width="90" height="90" class="cell diag"></rect>
+        <text x="90" y="70" class="cell-text">s₀(1-s₀)</text><text x="90" y="88" class="cell-text">≈0.0819</text>
+
+        <rect x="135" y="35" width="90" height="90" class="cell off"></rect>
+        <text x="180" y="70" class="cell-text">-s₀s₁</text><text x="180" y="88" class="cell-text">≈-0.0220</text>
+
+        <rect x="225" y="35" width="90" height="90" class="cell off"></rect>
+        <text x="270" y="70" class="cell-text">-s₀s₂</text><text x="270" y="88" class="cell-text">≈-0.0599</text>
+
+        <rect x="45" y="125" width="90" height="90" class="cell off"></rect>
+        <text x="90" y="160" class="cell-text">-s₁s₀</text><text x="90" y="178" class="cell-text">≈-0.0220</text>
+
+        <rect x="135" y="125" width="90" height="90" class="cell diag"></rect>
+        <text x="180" y="160" class="cell-text">s₁(1-s₁)</text><text x="180" y="178" class="cell-text">≈0.1848</text>
+
+        <rect x="225" y="125" width="90" height="90" class="cell off"></rect>
+        <text x="270" y="160" class="cell-text">-s₁s₂</text><text x="270" y="178" class="cell-text">≈-0.1628</text>
+
+        <rect x="45" y="215" width="90" height="90" class="cell off"></rect>
+        <text x="90" y="250" class="cell-text">-s₂s₀</text><text x="90" y="268" class="cell-text">≈-0.0599</text>
+
+        <rect x="135" y="215" width="90" height="90" class="cell off"></rect>
+        <text x="180" y="250" class="cell-text">-s₂s₁</text><text x="180" y="268" class="cell-text">≈-0.1628</text>
+
+        <rect x="225" y="215" width="90" height="90" class="cell diag"></rect>
+        <text x="270" y="250" class="cell-text">s₂(1-s₂)</text><text x="270" y="268" class="cell-text">≈0.2227</text>
+
+        <text x="180" y="325" class="lbl" text-anchor="middle">cada linha soma ≈0 (invariância por deslocamento, §1 do .md)</text>
+      </svg>
+    </div>
+    <div class="caption"><span class="tag">FIG. 2</span>Multiplicar <code>dOut</code> por essa matriz inteira a cada backward custaria <code>O(N²)</code>; a fórmula simplificada (§4 do <code>.md</code>) chega no mesmo resultado em <code>O(N)</code>, sem nunca montar essa matriz.</div>
+  </div>
+
+  <h2><span class="num">§3</span> Referência rápida</h2>
+  <table>
+    <tr><th></th><th>Forward</th><th>Backward</th></tr>
+    <tr><td>Softmax</td><td><code>e^(xᵢ-max(x)) / Σⱼe^(xʲ-max(x))</code></td><td><code>dx = s · (dOut − (dOut·s).sum())</code></td></tr>
+    <tr><td>Log-Softmax</td><td><code>xᵢ − log(Σⱼeˣʲ)</code></td><td><code>dx = dOut − s · dOut.sum()</code></td></tr>
+  </table>
+
+  <footer>mini-gpt — etapa 6 · softmax e log-softmax</footer>
+</div>
