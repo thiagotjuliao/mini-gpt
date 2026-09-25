@@ -1980,3 +1980,15 @@ Palavras reais do português aparecem sozinhas — *que, mas, mais, era, foi, es
 ### Estado final
 
 O projeto está completo e **demonstrável**: `sbt "gpt/runMain gpt.cli.train"` treina, `sbt "gpt/runMain gpt.cli.chat"` conversa.
+
+---
+
+## 2026-09-25 — Ferramental alinhado ao `project-templates`: Scala 3.9.0, sbt 2.0.9 e o formatador saindo do editor
+
+Não muda nada do modelo nem do `scalagrad` — é o ferramental em volta deles. Os projetos Scala pessoais passaram a partir de uma configuração única, no repositório `project-templates` (camada `scala-sbt`), e este foi o que mais estava fora dela.
+
+- **Versões:** Scala 3.8.4 → 3.9.0, sbt 2.0.2 → 2.0.9, scalafmt 3.9.4 → 3.11.5. A suíte passou inteira antes e depois de cada troca: 227 testes no `scalagrad`, 310 no `gpt`.
+- **O formatador agora é checado pelo build, não só pelo editor.** Faltava o plugin `sbt-scalafmt` em `project/plugins.sbt`, então a formatação só acontecia no *format on save* do Metals — nada impedia um arquivo de ficar fora do padrão se fosse editado em outro lugar. Com o plugin, `sbt scalafmtCheckAll` passa a valer como verificação.
+- **Sintaxe sem chaves (Scala 3 braceless), decidida conscientemente.** O `.scalafmt.conf` antigo deixava a remoção de chaves de fora de propósito, por causa de chaves com intenção no código. Adotar o padrão do template reformatou 62 arquivos (+542 −692), e o diff é só remoção de chaves de métodos, classes e blocos de controle. As chaves que motivaram a exceção — o `{ for ... yield ... }.toArray` em `Masks`, `Tensor` e `IndexOps` — ficaram intactas: o scalafmt não remove chaves de um bloco usado como expressão antes de uma chamada de método.
+- **Editor e git:** entram `.vscode/settings.json` e `extensions.json` (Metals, Error Lens, Docs View, Better Comments), `.editorconfig` e `.gitattributes` (tudo LF, scripts `.ps1` em CRLF). O `.gitignore` genérico de Java/Maven/Spring foi trocado pelo do template, mantendo a única linha que era deste projeto: o checkpoint `gpt/data/model.bin`.
+- **O que continua igual de propósito:** o ScalaTest, que é o framework deste projeto (o template usa munit por padrão, com o ScalaTest documentado como alternativa), e as `javaOptions` de encoding do `run` forkado.
