@@ -1,0 +1,35 @@
+# Opens a pull request for every newer version of Scala, sbt, scalafmt, sbt
+# plugins and libraries this build uses — one per update, weekly, or on demand
+# from the Actions tab.
+#
+# One-time setup per repository (or once for the whole account): Settings →
+# Actions → General → Workflow permissions → "Read and write permissions" and
+# "Allow GitHub Actions to create and approve pull requests". Without it the
+# job runs and cannot open anything.
+#
+# Pull requests opened with the default token do not trigger other workflows,
+# so CI does not run on them by itself: close and reopen one, or push to it,
+# to get the verify run before merging.
+name: scala-steward
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  scala-steward:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: sbt/setup-sbt@v1
+
+      - uses: scala-steward-org/scala-steward-action@v2
