@@ -4,10 +4,11 @@ package scalagrad.core
   * pra avançar cada dimensão em 1. Wrapper sobre `Array[Int]`, mesmo padrão de
   * construção restrita de `Shape`.
   */
-final class Strides private[scalagrad] (private val values: Array[Int]) {
+final class Strides private[scalagrad] (private val values: Array[Int]):
   def apply(i: Int): Int = values(i)
   def length: Int = values.length
   def mkString(sep: String): String = values.mkString(sep)
+
   /** O array interno, **sem cópia** -- ao contrário de `Shape.toArray`. É
     * deliberado: `Shape.linearIndex` lê isto a cada acesso a elemento, e clonar
     * ali dominaria o custo. O nome diz `unsafe` para que quem chamar saiba que
@@ -28,9 +29,8 @@ final class Strides private[scalagrad] (private val values: Array[Int]) {
     leftPad(Math.max(0, targetLength - length), value)
 
   override def toString: String = values.mkString("Strides(", ", ", ")")
-}
+end Strides
 
-object Strides {
+object Strides:
   def apply(dims: Int*): Strides = new Strides(dims.toArray)
   def apply(dims: Array[Int]): Strides = new Strides(dims)
-}

@@ -2,8 +2,8 @@ package scalagrad.gradcheck
 
 import scalagrad.core.Tensor
 
-object Gradcheck {
-  def run(input: Tensor, eps: Double = 1e-5)(f: Tensor => Tensor): Double = {
+object Gradcheck:
+  def run(input: Tensor, eps: Double = 1e-5)(f: Tensor => Tensor): Double =
     // Posição em `data` de cada índice canônico: `gradient` é canônico, e a
     // perturbação precisa mexer na MESMA posição lógica que o gradiente
     // analítico reporta. Num tensor não contíguo os dois índices divergem.
@@ -44,5 +44,5 @@ object Gradcheck {
         Math.abs(a - n) / Math.max(Math.max(Math.abs(a), Math.abs(n)), 1e-8)
       }
       .max
-  }
-}
+  end run
+end Gradcheck

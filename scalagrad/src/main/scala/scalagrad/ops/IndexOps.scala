@@ -4,9 +4,9 @@ import scalagrad.core.Tensor
 import scalagrad.core.Shape
 import scalagrad.core.Gradient
 
-private[ops] trait IndexOps {
-  extension (t: Tensor) {
-    def indexSelect(indices: Array[Int]): Tensor = {
+private[ops] trait IndexOps:
+  extension (t: Tensor)
+    def indexSelect(indices: Array[Int]): Tensor =
       require(
         t.rank == 2,
         s"indexSelect expects a rank-2 table [numRows, rowDim], but got rank ${t.rank} instead."
@@ -28,10 +28,10 @@ private[ops] trait IndexOps {
       val prev = if Tensor.gradEnabled then Set(t) else Set()
 
       val data = {
-        for {
+        for
           i <- 0 until indices.length
           j <- 0 until rowDim
-        } yield t.get(indices(i), j)
+        yield t.get(indices(i), j)
       }.toArray
 
       Tensor(data, shape, shape.canonicalStrides, grad, reqGrad, prev) { () =>
@@ -47,6 +47,5 @@ private[ops] trait IndexOps {
             }
           }
       }
-    }
-  }
-}
+  end extension
+end IndexOps

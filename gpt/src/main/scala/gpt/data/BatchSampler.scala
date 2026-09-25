@@ -7,14 +7,14 @@ final class BatchSampler(
     corpus: Array[Int],
     contextLength: Int,
     randomizer: Random = new Random()
-) {
+):
   require(
     contextLength > 0 && contextLength < corpus.length,
     s"Context length must be positive and less than the corpus size ${corpus.length}, " +
       s"but got $contextLength."
   )
 
-  def sample(batchSize: Int): (Tensor, Tensor) = {
+  def sample(batchSize: Int): (Tensor, Tensor) =
     val shape = Array(batchSize, contextLength)
 
     val starts = (0 until batchSize)
@@ -31,10 +31,9 @@ final class BatchSampler(
       .toArray
 
     Tensor.make(inputs, shape) -> Tensor.make(targets, shape)
-  }
-}
+end BatchSampler
 
-object BatchSampler {
+object BatchSampler:
 
   /** Divide o corpus em treino e validação, cortando **em ordem** em vez de
     * sortear: com um corte aleatório, trechos vizinhos cairiam dos dois lados, e
@@ -46,7 +45,7 @@ object BatchSampler {
       contextLength: Int,
       validationFraction: Double = 0.1,
       randomizer: Random = new Random()
-  ): (BatchSampler, BatchSampler) = {
+  ): (BatchSampler, BatchSampler) =
     require(
       validationFraction > 0 && validationFraction < 1,
       s"validationFraction must be in (0, 1), but got $validationFraction."
@@ -64,5 +63,4 @@ object BatchSampler {
     val validation = new BatchSampler(corpus.drop(cut), contextLength, randomizer)
 
     train -> validation
-  }
-}
+end BatchSampler

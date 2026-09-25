@@ -7,7 +7,7 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class TransformerBlockSpec extends AnyFlatSpec with Matchers {
+class TransformerBlockSpec extends AnyFlatSpec with Matchers:
 
   // Dimensoes todas distintas entre si -- B, T, dModel, nHeads, expansion e
   // dHead. Um eixo trocado sobrevive a qualquer coincidencia entre elas.
@@ -26,53 +26,45 @@ class TransformerBlockSpec extends AnyFlatSpec with Matchers {
       seqLen: Int,
       dModel: Int,
       requiresGradient: Boolean = false
-  ): Tensor = {
+  ): Tensor =
     val data = Array.fill(batchSize * seqLen * dModel)(rng.nextDouble() * 2 - 1)
     Tensor.make(data, Array(batchSize, seqLen, dModel), requiresGradient)
-  }
 
-  private def lossWeights(shape: Array[Int]): Tensor = {
+  private def lossWeights(shape: Array[Int]): Tensor =
     val size = shape.product
     Tensor.make(Array.tabulate(size)(i => 0.3 + 0.7 * Math.sin(i * 1.7)), shape)
-  }
 
-  private def maxDifference(a: Tensor, b: Tensor): Double = {
+  private def maxDifference(a: Tensor, b: Tensor): Double =
     a.shape.toArray shouldBe b.shape.toArray
 
     (0 until a.size)
       .map(i => Math.abs(a.get(a.unravelIndex(i)*) - b.get(b.unravelIndex(i)*)))
       .max
-  }
 
   /** A referencia da etapa: o bloco montado a partir das subcamadas expostas,
     * que ja tem suite propria. Nao ha Scala puro aqui de proposito -- a
     * atencao e o MLP foram conferidos contra referencias em laco nas Etapas 12
     * e 13, e reimplementa-los aqui duplicaria o risco em vez de reduzi-lo.
     */
-  private def reference(b: TransformerBlock, x: Tensor): Tensor = {
+  private def reference(b: TransformerBlock, x: Tensor): Tensor =
     val h = x + b.attention.forward(b.ln1.forward(x))
     h + b.mlp.forward(b.ln2.forward(h))
-  }
 
-  private def withoutFirstResidual(b: TransformerBlock, x: Tensor): Tensor = {
+  private def withoutFirstResidual(b: TransformerBlock, x: Tensor): Tensor =
     val h = b.attention.forward(b.ln1.forward(x))
     h + b.mlp.forward(b.ln2.forward(h))
-  }
 
-  private def withoutSecondResidual(b: TransformerBlock, x: Tensor): Tensor = {
+  private def withoutSecondResidual(b: TransformerBlock, x: Tensor): Tensor =
     val h = x + b.attention.forward(b.ln1.forward(x))
     b.mlp.forward(b.ln2.forward(h))
-  }
 
-  private def postLN(b: TransformerBlock, x: Tensor): Tensor = {
+  private def postLN(b: TransformerBlock, x: Tensor): Tensor =
     val h = b.ln1.forward(x + b.attention.forward(x))
     b.ln2.forward(h + b.mlp.forward(h))
-  }
 
-  private def swappedSublayers(b: TransformerBlock, x: Tensor): Tensor = {
+  private def swappedSublayers(b: TransformerBlock, x: Tensor): Tensor =
     val h = x + b.mlp.forward(b.ln1.forward(x))
     h + b.attention.forward(b.ln2.forward(h))
-  }
 
   // ---- forward ----
 
@@ -90,11 +82,12 @@ class TransformerBlockSpec extends AnyFlatSpec with Matchers {
   it should "preserve the input shape, across varied dimensions" in {
     val cases = Seq((1, 1, 2, 1, 1), (2, 3, 4, 2, 4), (3, 5, 8, 4, 2), (2, 7, 6, 3, 3))
 
-    for ((b, t, d, h, e) <- cases) withClue(s"B=$b T=$t dModel=$d nHeads=$h expansion=$e: ") {
-      val y = TransformerBlock(d, h, e, rng).forward(randomSequence(b, t, d))
+    for (b, t, d, h, e) <- cases do
+      withClue(s"B=$b T=$t dModel=$d nHeads=$h expansion=$e: ") {
+        val y = TransformerBlock(d, h, e, rng).forward(randomSequence(b, t, d))
 
-      y.shape.toArray shouldBe Array(b, t, d)
-    }
+        y.shape.toArray shouldBe Array(b, t, d)
+      }
   }
 
   it should "keep both residual sums" in {
@@ -161,14 +154,16 @@ class TransformerBlockSpec extends AnyFlatSpec with Matchers {
     val y = block.forward(x)
     val yChanged = block.forward(changed)
 
-    for (t <- 0 until seqLen - 1; d <- 0 until dModel)
+    for t <- 0 until seqLen - 1; d <- 0 until dModel do
       withClue(s"posicao (t=$t, d=$d): ") {
         yChanged.get(0, t, d) shouldBe y.get(0, t, d) +- 1e-12
       }
 
     // contraprova: a ultima posicao TEM que mudar, senao o teste acima passaria
     // num bloco que ignora a entrada
-    val lastChanged = (0 until dModel).map(d => Math.abs(yChanged.get(0, seqLen - 1, d) - y.get(0, seqLen - 1, d))).max
+    val lastChanged = (0 until dModel)
+      .map(d => Math.abs(yChanged.get(0, seqLen - 1, d) - y.get(0, seqLen - 1, d)))
+      .max
     lastChanged should be > 1e-3
   }
 
@@ -211,16 +206,18 @@ class TransformerBlockSpec extends AnyFlatSpec with Matchers {
     // muda e o formato dos parametros -- e a contagem do teste seguinte.
     val block = TransformerBlock(dModel, nHeads, expansion, rng)
 
-    for ((norm, name) <- Seq((block.ln1, "ln1"), (block.ln2, "ln2"))) withClue(s"$name: ") {
-      norm.parameters.size shouldBe 2
-      norm.parameters.foreach(p => p.shape.toArray shouldBe Array(dModel))
-    }
+    for (norm, name) <- Seq((block.ln1, "ln1"), (block.ln2, "ln2")) do
+      withClue(s"$name: ") {
+        norm.parameters.size shouldBe 2
+        norm.parameters.foreach(p => p.shape.toArray shouldBe Array(dModel))
+      }
   }
 
   it should "total 12·dModel² + 11·dModel" in {
-    for ((d, h) <- Seq((2, 1), (8, 4), (16, 4), (64, 8))) withClue(s"dModel=$d nHeads=$h: ") {
-      TransformerBlock(d, h, rng = rng).parameters.map(_.size).sum shouldBe 12 * d * d + 11 * d
-    }
+    for (d, h) <- Seq((2, 1), (8, 4), (16, 4), (64, 8)) do
+      withClue(s"dModel=$d nHeads=$h: ") {
+        TransformerBlock(d, h, rng = rng).parameters.map(_.size).sum shouldBe 12 * d * d + 11 * d
+      }
   }
 
   // ---- gradientes ----
@@ -238,14 +235,13 @@ class TransformerBlockSpec extends AnyFlatSpec with Matchers {
     // segundo run sobre o mesmo bloco leria o gradiente somado do anterior.
     val w = lossWeights(Array(batchSize, seqLen, dModel))
 
-    for (i <- 0 until 14) {
+    for i <- 0 until 14 do
       val block = TransformerBlock(dModel, nHeads, expansion, rng)
       val x = randomSequence(batchSize, seqLen, dModel)
 
       withClue(s"parametro $i: ") {
         Gradcheck.run(block.parameters(i))(_ => (block.forward(x) * w).sum) should be < 1e-5
       }
-    }
   }
 
   it should "pass gradient check with a non-contiguous input" in {
@@ -276,4 +272,4 @@ class TransformerBlockSpec extends AnyFlatSpec with Matchers {
     error.getMessage should include(dModel.toString)
     error.getMessage should include((dModel + 1).toString)
   }
-}
+end TransformerBlockSpec

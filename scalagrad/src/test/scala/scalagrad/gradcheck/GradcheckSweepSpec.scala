@@ -12,7 +12,7 @@ import org.scalatest.matchers.should.Matchers
   * execuções (um teste que falha só às vezes, por sorte do gerador, é pior
   * que um teste fixo).
   */
-class GradcheckSweepSpec extends AnyFlatSpec with Matchers {
+class GradcheckSweepSpec extends AnyFlatSpec with Matchers:
   private val rng = new scala.util.Random(42)
   private val shapes = List(Array(4), Array(2, 3))
 
@@ -21,10 +21,9 @@ class GradcheckSweepSpec extends AnyFlatSpec with Matchers {
       lo: Double,
       hi: Double,
       requiresGradient: Boolean = true
-  ): Tensor = {
+  ): Tensor =
     val data = Array.fill(shape.product)(lo + rng.nextDouble() * (hi - lo))
     Tensor.make(data, shape, requiresGradient)
-  }
 
   "Gradcheck" should "pass for add, across varied shapes" in {
     shapes.foreach { shape =>
@@ -140,9 +139,7 @@ class GradcheckSweepSpec extends AnyFlatSpec with Matchers {
     Gradcheck.run(a)(x => x.matmul(w).sum) should be < 1e-5
     // o gradiente da matriz compartilhada soma sobre o lote -- a diferenca finita
     // perturba uma posicao de W e sente as duas fatias de uma vez
-    Gradcheck.run(randomTensor(Array(4, 5), -3.0, 3.0))(x =>
-      aFixed.matmul(x).sum
-    ) should be < 1e-5
+    Gradcheck.run(randomTensor(Array(4, 5), -3.0, 3.0))(x => aFixed.matmul(x).sum) should be < 1e-5
   }
 
   it should "pass for matmul on a non-contiguous batched operand" in {
@@ -330,4 +327,4 @@ class GradcheckSweepSpec extends AnyFlatSpec with Matchers {
 
     Gradcheck.run(a)(x => (x.logSoftmax(0) * w).sum) should be < 1e-5
   }
-}
+end GradcheckSweepSpec

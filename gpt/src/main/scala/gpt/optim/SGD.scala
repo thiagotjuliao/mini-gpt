@@ -10,7 +10,7 @@ import scalagrad.core.Tensor
   * proporcionalidade que o AdamW abandona
   * (ver theory/17-adamw-optimizer/17-adamw-optimizer.md §2).
   */
-final class SGD(val parameters: List[Tensor], val lr: Double = 3e-4) {
+final class SGD(val parameters: List[Tensor], val lr: Double = 3e-4):
   require(
     parameters.nonEmpty,
     "The optimizer needs at least 1 parameter to update, but got an empty list."
@@ -32,4 +32,3 @@ final class SGD(val parameters: List[Tensor], val lr: Double = 3e-4) {
 
     p.updateData(Array.tabulate(p.size)(i => values(i) - stepLr * gradient(i)))
   }
-}

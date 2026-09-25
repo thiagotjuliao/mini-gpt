@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.io.{DataOutputStream, File, FileOutputStream}
 
-class CheckpointSpec extends AnyFlatSpec with Matchers {
+class CheckpointSpec extends AnyFlatSpec with Matchers:
 
   private val vocabSize = 6
   private val dModel = 8
@@ -23,18 +23,16 @@ class CheckpointSpec extends AnyFlatSpec with Matchers {
   private val entradas = Tensor.make(Array(1.0, 2.0, 3.0, 0.0), Array(1, contextLength))
   private val alvos = Tensor.make(Array(2.0, 3.0, 0.0, 1.0), Array(1, contextLength))
 
-  private def umPasso(m: GPT, opt: AdamW): AdamW = {
+  private def umPasso(m: GPT, opt: AdamW): AdamW =
     val loss = CrossEntropy(m.forward(entradas), alvos)
     opt.zeroGrad()
     loss.backward()
     opt.step()
-  }
 
-  private def arquivoTemporario(): File = {
+  private def arquivoTemporario(): File =
     val f = File.createTempFile("mini-gpt-checkpoint", ".bin")
     f.deleteOnExit()
     f
-  }
 
   private def logits(m: GPT): Array[Double] = Tensor.noGrad(m.forward(entradas)).toArray
 
@@ -182,4 +180,4 @@ class CheckpointSpec extends AnyFlatSpec with Matchers {
     erro.getMessage should include("GPTConfig(6,8,2,1,4,4)")
     erro.getMessage should include("GPTConfig(6,16,2,1,4,4)")
   }
-}
+end CheckpointSpec

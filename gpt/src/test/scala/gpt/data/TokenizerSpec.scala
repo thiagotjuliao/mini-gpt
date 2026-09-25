@@ -3,7 +3,7 @@ package gpt.data
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class TokenizerSpec extends AnyFlatSpec with Matchers {
+class TokenizerSpec extends AnyFlatSpec with Matchers:
 
   // Exemplo verificado em theory/07-tokenization/07-tokenization.md §2-3.
   private val corpus = "abacate"
@@ -70,9 +70,8 @@ class TokenizerSpec extends AnyFlatSpec with Matchers {
   }
 
   "decode(encode(text))" should "round-trip for samples drawn from the corpus" in {
-    for (sample <- Seq("abacate", "cat", "tea", "a", "bacatea")) {
+    for sample <- Seq("abacate", "cat", "tea", "a", "bacatea") do
       tokenizer.decode(tokenizer.encode(sample)) shouldBe sample
-    }
   }
 
   "alphabet" should "hold exactly the characters the tokenizer knows" in {
@@ -90,4 +89,4 @@ class TokenizerSpec extends AnyFlatSpec with Matchers {
     an[NoSuchElementException] should be thrownBy t.encode(digitado)
     noException should be thrownBy t.encode(digitado.filter(t.alphabet.contains))
   }
-}
+end TokenizerSpec

@@ -4,7 +4,7 @@ import scalagrad.core.Tensor
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class SGDSpec extends AnyFlatSpec with Matchers {
+class SGDSpec extends AnyFlatSpec with Matchers:
 
   private val tolerance = 1e-12
   private val lr = 3e-4
@@ -12,10 +12,9 @@ class SGDSpec extends AnyFlatSpec with Matchers {
   private def parametro(valores: Double*): Tensor =
     Tensor.make(valores.toArray, Array(valores.length), true)
 
-  private def semear(p: Tensor, gradiente: Double*): Unit = {
+  private def semear(p: Tensor, gradiente: Double*): Unit =
     p.gradient.zero()
     gradiente.indices.foreach(i => p.gradient.accumulate(i, gradiente(i)))
-  }
 
   "SGD" should "move each parameter by lr times its own gradient" in {
     val p = parametro(0.60, -0.20, 0.05)
@@ -91,4 +90,4 @@ class SGDSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy
       new SGD(List(Tensor.make(Array(1.0), Array(1))))
   }
-}
+end SGDSpec

@@ -7,7 +7,7 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
+class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers:
 
   // Dimensoes deliberadamente todas distintas entre si -- B, T, nHeads, dHead
   // e dModel. Duas que coincidam escondem um eixo trocado: durante a escrita
@@ -39,25 +39,23 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
       seqLen: Int,
       dModel: Int,
       requiresGradient: Boolean = false
-  ): Tensor = {
+  ): Tensor =
     val data = Array.fill(batchSize * seqLen * dModel)(rng.nextDouble() * 2 - 1)
     Tensor.make(data, Array(batchSize, seqLen, dModel), requiresGradient)
-  }
 
   /** Pesos distintos pra perda escalar do gradient check. Nunca usar `.sum`
     * puro sobre os pesos de atencao: `softmax(x).sum` e funcao constante e
     * aprova qualquer backward (theory/06-softmax Secao 5).
     */
-  private def lossWeights(shape: Array[Int]): Tensor = {
+  private def lossWeights(shape: Array[Int]): Tensor =
     val size = shape.product
     Tensor.make(Array.tabulate(size)(i => 0.3 + 0.7 * Math.sin(i * 1.7)), shape)
-  }
 
   private def project(
       x: Tensor,
       w: Tensor,
       b: Option[Tensor] = None
-  ): Array[Array[Array[Double]]] = {
+  ): Array[Array[Array[Double]]] =
     val bs = x.shape(0)
     val t = x.shape(1)
     val din = x.shape(2)
@@ -66,15 +64,13 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     Array.tabulate(bs, t, dout) { (i, j, o) =>
       (0 until din).map(k => x.get(i, j, k) * w.get(k, o)).sum + b.fold(0.0)(_.get(o))
     }
-  }
 
-  private def softmaxRow(row: Array[Double]): Array[Double] = {
+  private def softmaxRow(row: Array[Double]): Array[Double] =
     val max = row.max
     val exps = row.map(s => Math.exp(s - max))
     val total = exps.sum
 
     exps.map(_ / total)
-  }
 
   /** Referencia do bloco inteiro em Scala puro -- nao usa nenhuma operacao de
     * `scalagrad`, so le os 6 parametros. Devolve (pesos por cabeca, saida).
@@ -87,7 +83,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
       mha: MultiHeadAttention,
       x: Tensor,
       heads: Int
-  ): (Array[Array[Array[Array[Double]]]], Array[Array[Array[Double]]]) = {
+  ): (Array[Array[Array[Array[Double]]]], Array[Array[Array[Double]]]) =
     val ps = mha.parameters
     val q = project(x, ps(qWeight), Some(ps(qBias)))
     val k = project(x, ps(kWeight))
@@ -115,7 +111,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     }
 
     (p, y)
-  }
+  end reference
 
   /** Referencia sem eixo de cabeca nenhum: e literalmente o bloco da Etapa 11
     * com dHead = dModel, seguido de W_O. Serve so pro caso nHeads = 1, e e
@@ -124,7 +120,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
   private def referenceSingleHead(
       mha: MultiHeadAttention,
       x: Tensor
-  ): Array[Array[Array[Double]]] = {
+  ): Array[Array[Array[Double]]] =
     val ps = mha.parameters
     val q = project(x, ps(qWeight), Some(ps(qBias)))
     val k = project(x, ps(kWeight))
@@ -149,9 +145,9 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     Array.tabulate(bs, t, dm) { (b, i, o) =>
       (0 until dm).map(c => context(b)(i)(c) * ps(oWeight).get(c, o)).sum + ps(oBias).get(o)
     }
-  }
+  end referenceSingleHead
 
-  private def perturbPosition(x: Tensor, position: Int, delta: Double): Tensor = {
+  private def perturbPosition(x: Tensor, position: Int, delta: Double): Tensor =
     val bs = x.shape(0)
     val t = x.shape(1)
     val dm = x.shape(2)
@@ -164,7 +160,6 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     }
 
     Tensor.make(data, Array(bs, t, dm))
-  }
 
   // ---- forward ----
 
@@ -175,7 +170,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val y = mha.forward(x)
     val (_, expected) = reference(mha, x, nHeads)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel)
+    for b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel do
       withClue(s"posicao (b=$b, t=$t, d=$d): ") {
         y.get(b, t, d) shouldBe expected(b)(t)(d) +- 1e-12
       }
@@ -191,7 +186,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val y = mha.forward(x)
     val expected = referenceSingleHead(mha, x)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel)
+    for b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel do
       withClue(s"posicao (b=$b, t=$t, d=$d): ") {
         y.get(b, t, d) shouldBe expected(b)(t)(d) +- 1e-12
       }
@@ -201,7 +196,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     // O formato de entrada e o de saida coincidirem e o que permite empilhar
     // o bloco N vezes na Etapa 15 (theory/12-multi-head-attention Secao 10).
     // Inclui as pontas: uma cabeca so, um token so, dHead = 1.
-    for ((bs, t, dm, h) <- Seq((1, 1, 1, 1), (1, 4, 6, 3), (2, 1, 8, 8), (4, 6, 9, 3))) {
+    for (bs, t, dm, h) <- Seq((1, 1, 1, 1), (1, 4, 6, 3), (2, 1, 8, 8), (4, 6, 9, 3)) do
       val y = MultiHeadAttention(dm, h).forward(randomSequence(bs, t, dm))
 
       withClue(s"(batchSize=$bs, seqLen=$t, dModel=$dm, nHeads=$h): ") {
@@ -210,7 +205,6 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
         y.shape(1) shouldBe t
         y.shape(2) shouldBe dm
       }
-    }
   }
 
   it should "accept a non-contiguous input" in {
@@ -234,7 +228,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val y = mha.forward(x)
     val yContiguous = mha.forward(same)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel)
+    for b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel do
       withClue(s"posicao (b=$b, t=$t, d=$d): ") {
         y.get(b, t, d) shouldBe yContiguous.get(b, t, d) +- 1e-12
       }
@@ -253,7 +247,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
 
     split.shape.toArray shouldBe Array(batchSize, nHeads, seqLen, dHead)
 
-    for (b <- 0 until batchSize; i <- 0 until seqLen; d <- 0 until dModel)
+    for b <- 0 until batchSize; i <- 0 until seqLen; d <- 0 until dModel do
       withClue(s"posicao (b=$b, t=$i, d=$d): ") {
         merged.get(b, i, d) shouldBe t.get(b, i, d)
       }
@@ -270,12 +264,12 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
 
     wrong.shape.toArray shouldBe right.shape.toArray
 
-    val differences = for {
+    val differences = for
       b <- 0 until batchSize
       h <- 0 until nHeads
       i <- 0 until seqLen
       d <- 0 until dHead
-    } yield Math.abs(right.get(b, h, i, d) - wrong.get(b, h, i, d))
+    yield Math.abs(right.get(b, h, i, d) - wrong.get(b, h, i, d))
 
     differences.max should be > 1e-6
   }
@@ -315,14 +309,13 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val mha = MultiHeadAttention(dModel, nHeads, rng)
     val p = mha.attentionWeights(randomSequence(batchSize, seqLen, dModel))
 
-    for (b <- 0 until batchSize; h <- 0 until nHeads; i <- 0 until seqLen) {
+    for b <- 0 until batchSize; h <- 0 until nHeads; i <- 0 until seqLen do
       val row = (0 until seqLen).map(j => p.get(b, h, i, j))
 
       withClue(s"linha (b=$b, h=$h, i=$i): ") {
         row.sum shouldBe 1.0 +- 1e-12
         row.drop(i + 1).foreach(w => w shouldBe 0.0)
       }
-    }
   }
 
   it should "give the first position a weight of exactly 1 on itself" in {
@@ -332,7 +325,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val mha = MultiHeadAttention(dModel, nHeads, rng)
     val p = mha.attentionWeights(randomSequence(batchSize, seqLen, dModel))
 
-    for (b <- 0 until batchSize; h <- 0 until nHeads)
+    for b <- 0 until batchSize; h <- 0 until nHeads do
       withClue(s"(b=$b, h=$h): ") {
         p.get(b, h, 0, 0) shouldBe 1.0
       }
@@ -345,7 +338,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val p = mha.attentionWeights(x)
     val (expected, _) = reference(mha, x, nHeads)
 
-    for (b <- 0 until batchSize; h <- 0 until nHeads; i <- 0 until seqLen; j <- 0 until seqLen)
+    for b <- 0 until batchSize; h <- 0 until nHeads; i <- 0 until seqLen; j <- 0 until seqLen do
       withClue(s"posicao (b=$b, h=$h, i=$i, j=$j): ") {
         p.get(b, h, i, j) shouldBe expected(b)(h)(i)(j) +- 1e-12
       }
@@ -361,7 +354,7 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val y = mha.forward(x)
     val yPerturbed = mha.forward(perturbed)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen - 1; d <- 0 until dModel)
+    for b <- 0 until batchSize; t <- 0 until seqLen - 1; d <- 0 until dModel do
       withClue(s"posicao (b=$b, t=$t, d=$d): ") {
         y.get(b, t, d) shouldBe yPerturbed.get(b, t, d) +- 1e-15
       }
@@ -377,10 +370,10 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     val y = mha.forward(x)
     val yPerturbed = mha.forward(perturbed)
 
-    val moved = for {
+    val moved = for
       b <- 0 until batchSize
       d <- 0 until dModel
-    } yield Math.abs(y.get(b, seqLen - 1, d) - yPerturbed.get(b, seqLen - 1, d))
+    yield Math.abs(y.get(b, seqLen - 1, d) - yPerturbed.get(b, seqLen - 1, d))
 
     moved.max should be > 1e-6
   }
@@ -399,16 +392,18 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
 
     ps.size shouldBe 6
 
-    for (i <- Seq(qWeight, kWeight, vWeight, oWeight)) withClue(s"peso $i: ") {
-      ps(i).rank shouldBe 2
-      ps(i).shape(0) shouldBe dModel
-      ps(i).shape(1) shouldBe dModel
-    }
+    for i <- Seq(qWeight, kWeight, vWeight, oWeight) do
+      withClue(s"peso $i: ") {
+        ps(i).rank shouldBe 2
+        ps(i).shape(0) shouldBe dModel
+        ps(i).shape(1) shouldBe dModel
+      }
 
-    for (i <- Seq(qBias, oBias)) withClue(s"vies $i: ") {
-      ps(i).rank shouldBe 1
-      ps(i).shape(0) shouldBe dModel
-    }
+    for i <- Seq(qBias, oBias) do
+      withClue(s"vies $i: ") {
+        ps(i).rank shouldBe 1
+        ps(i).shape(0) shouldBe dModel
+      }
   }
 
   it should "total 4 * dModel^2 + 2 * dModel, independently of nHeads" in {
@@ -418,9 +413,10 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     // (theory/12-multi-head-attention Secao 2).
     val expected = 4 * dModel * dModel + 2 * dModel
 
-    for (h <- Seq(1, 2, 4, 8)) withClue(s"nHeads=$h: ") {
-      MultiHeadAttention(dModel, h, rng).parameters.map(_.size).sum shouldBe expected
-    }
+    for h <- Seq(1, 2, 4, 8) do
+      withClue(s"nHeads=$h: ") {
+        MultiHeadAttention(dModel, h, rng).parameters.map(_.size).sum shouldBe expected
+      }
 
     // confere contra a tabela da teoria Secao 9
     MultiHeadAttention(4, 2, rng).parameters.map(_.size).sum shouldBe 72
@@ -428,7 +424,9 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
 
   it should "mark every parameter as requiring gradient" in {
     // sem isso o otimizador da Etapa 17 nao teria como atualizar a camada.
-    MultiHeadAttention(dModel, nHeads, rng).parameters.foreach(p => p.requiresGradient shouldBe true)
+    MultiHeadAttention(dModel, nHeads, rng).parameters.foreach(p =>
+      p.requiresGradient shouldBe true
+    )
   }
 
   it should "not share one projection between Q, K, V and O" in {
@@ -464,14 +462,13 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     // relativa do Gradcheck (theory/11-attention Secao 8).
     val w = lossWeights(Array(batchSize, seqLen, dModel))
 
-    for (i <- 0 until 6) {
+    for i <- 0 until 6 do
       val mha = MultiHeadAttention(dModel, nHeads, rng)
       val x = randomSequence(batchSize, seqLen, dModel)
 
       withClue(s"parametro $i: ") {
         Gradcheck.run(mha.parameters(i))(_ => (mha.forward(x) * w).sum) should be < 1e-5
       }
-    }
   }
 
   it should "pass gradient check with a non-contiguous input" in {
@@ -494,9 +491,10 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "accept every nHeads that divides dModel" in {
-    for (h <- Seq(1, 2, 4, 8)) withClue(s"nHeads=$h: ") {
-      MultiHeadAttention(dModel, h, rng).dHead shouldBe dModel / h
-    }
+    for h <- Seq(1, 2, 4, 8) do
+      withClue(s"nHeads=$h: ") {
+        MultiHeadAttention(dModel, h, rng).dHead shouldBe dModel / h
+      }
   }
 
   "MultiHeadAttention.forward" should "reject an input that is not rank 3" in {
@@ -525,11 +523,10 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
     )
   }
 
-  private def desvioPadrao(t: scalagrad.core.Tensor): Double = {
+  private def desvioPadrao(t: scalagrad.core.Tensor): Double =
     val v = t.toArray
     val media = v.sum / v.length
     Math.sqrt(v.map(x => (x - media) * (x - media)).sum / v.length)
-  }
 
   "the residual scale" should "shrink W_O and leave W_Q alone" in {
     // parameters = [W_q, b_q, W_k, W_v, W_o, b_o]
@@ -548,4 +545,4 @@ class MultiHeadAttentionSpec extends AnyFlatSpec with Matchers {
 
     desvioPadrao(atencao.parameters(4)) / desvioPadrao(atencao.parameters(0)) shouldBe 1.0 +- 0.15
   }
-}
+end MultiHeadAttentionSpec

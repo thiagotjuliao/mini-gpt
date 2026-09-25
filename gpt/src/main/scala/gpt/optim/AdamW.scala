@@ -18,7 +18,7 @@ final class AdamW(
     // `private[gpt]` e não `private`: o `Checkpoint` da Etapa 18 precisa ler os
     // momentos para salvá-los, e escrevê-los de volta ao retomar um treino.
     private[gpt] val state: Map[Tensor, (Array[Double], Array[Double])] = Map.empty
-) {
+):
   require(
     parameters.nonEmpty,
     "The optimizer needs at least 1 parameter to update, but got an empty list."
@@ -42,7 +42,7 @@ final class AdamW(
   /** `stepLr` sobrescreve a taxa deste passo, sem alterar a do otimizador --
     * é como o schedule da Etapa 18 injeta o valor de cada passo.
     */
-  def step(stepLr: Double): AdamW = {
+  def step(stepLr: Double): AdamW =
     // O contador avança antes de ser usado: com `t = 0` a correção de viés
     // dividiria por `1 - beta^0 = 0`.
     val nextT = t + 1
@@ -85,5 +85,5 @@ final class AdamW(
       nextT,
       updates.map((p, nextM, nextV, _) => p -> (nextM, nextV)).toMap
     )
-  }
-}
+  end step
+end AdamW

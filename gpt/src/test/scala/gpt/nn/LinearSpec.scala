@@ -7,16 +7,15 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class LinearSpec extends AnyFlatSpec with Matchers {
+class LinearSpec extends AnyFlatSpec with Matchers:
 
   private def randomInput(
       batchSize: Int,
       inputDim: Int,
       requiresGradient: Boolean = false
-  ): Tensor = {
+  ): Tensor =
     val data = Array.fill(batchSize * inputDim)(Random.nextDouble() * 2 - 1)
     Tensor.make(data, Array(batchSize, inputDim), requiresGradient)
-  }
 
   private def flatten(t: Tensor): IndexedSeq[Double] =
     (0 until t.size).map(i => t.get(t.unravelIndex(i)*))
@@ -30,20 +29,18 @@ class LinearSpec extends AnyFlatSpec with Matchers {
     val w = linear.parameters(0)
     val b = linear.parameters(1)
 
-    for (i <- 0 until batchSize; j <- 0 until outputDim) {
+    for i <- 0 until batchSize; j <- 0 until outputDim do
       val expected = (0 until inputDim).map(k => x.get(i, k) * w.get(k, j)).sum + b.get(j)
       y.get(i, j) shouldBe expected +- 1e-9
-    }
   }
 
   it should "produce output of shape (batchSize, outputDim), for varied dimensions" in {
-    for ((inputDim, outputDim, batchSize) <- Seq((1, 1, 1), (4, 3, 1), (5, 8, 6))) {
+    for (inputDim, outputDim, batchSize) <- Seq((1, 1, 1), (4, 3, 1), (5, 8, 6)) do
       val linear = new Linear(inputDim, outputDim)
       val y = linear.forward(randomInput(batchSize, inputDim))
 
       y.rank shouldBe 2
       y.size shouldBe batchSize * outputDim
-    }
   }
 
   "Linear.parameters" should "return exactly [W, b], with the shapes [inputDim,outputDim] and [outputDim]" in {
@@ -125,10 +122,9 @@ class LinearSpec extends AnyFlatSpec with Matchers {
       seqLen: Int,
       inputDim: Int,
       requiresGradient: Boolean = false
-  ): Tensor = {
+  ): Tensor =
     val data = Array.fill(batchSize * seqLen * inputDim)(Random.nextDouble() * 2 - 1)
     Tensor.make(data, Array(batchSize, seqLen, inputDim), requiresGradient)
-  }
 
   "Linear.forward with a rank-3 input" should "apply the same W and b to every position" in {
     val inputDim = 3; val outputDim = 2; val batchSize = 2; val seqLen = 4
@@ -141,10 +137,9 @@ class LinearSpec extends AnyFlatSpec with Matchers {
 
     y.shape.toList shouldBe List(batchSize, seqLen, outputDim)
 
-    for (i <- 0 until batchSize; t <- 0 until seqLen; j <- 0 until outputDim) {
+    for i <- 0 until batchSize; t <- 0 until seqLen; j <- 0 until outputDim do
       val expected = (0 until inputDim).map(k => x.get(i, t, k) * w.get(k, j)).sum + b.get(j)
       y.get(i, t, j) shouldBe expected +- 1e-9
-    }
   }
 
   it should "give each position the same result it would get on its own" in {
@@ -156,12 +151,11 @@ class LinearSpec extends AnyFlatSpec with Matchers {
 
     val y = linear.forward(x)
 
-    for (i <- 0 until 2; t <- 0 until 4) {
+    for i <- 0 until 2; t <- 0 until 4 do
       val row = Tensor.make((0 until inputDim).map(k => x.get(i, t, k)).toArray, Array(1, inputDim))
       val alone = linear.forward(row)
 
       (0 until outputDim).foreach(j => y.get(i, t, j) shouldBe alone.get(0, j) +- 1e-12)
-    }
   }
 
   it should "pass gradient check w.r.t. x, W and b" in {
@@ -213,10 +207,9 @@ class LinearSpec extends AnyFlatSpec with Matchers {
     val y = linear.forward(x)
     val w = linear.parameters(0)
 
-    for (i <- 0 until batchSize; j <- 0 until outputDim) {
+    for i <- 0 until batchSize; j <- 0 until outputDim do
       val expected = (0 until inputDim).map(k => x.get(i, k) * w.get(k, j)).sum
       y.get(i, j) shouldBe expected +- 1e-12
-    }
   }
 
   it should "map a zero input to exactly zero" in {
@@ -228,7 +221,7 @@ class LinearSpec extends AnyFlatSpec with Matchers {
 
     val y = linear.forward(zeros)
 
-    for (i <- 0 until y.size) y.get(y.unravelIndex(i)*) shouldBe 0.0
+    for i <- 0 until y.size do y.get(y.unravelIndex(i)*) shouldBe 0.0
   }
 
   it should "apply the same W to every position of a rank-3 input" in {
@@ -243,10 +236,9 @@ class LinearSpec extends AnyFlatSpec with Matchers {
 
     y.shape.toList shouldBe List(batchSize, seqLen, outputDim)
 
-    for (i <- 0 until batchSize; t <- 0 until seqLen; j <- 0 until outputDim) {
+    for i <- 0 until batchSize; t <- 0 until seqLen; j <- 0 until outputDim do
       val expected = (0 until inputDim).map(k => x.get(i, t, k) * w.get(k, j)).sum
       y.get(i, t, j) shouldBe expected +- 1e-12
-    }
   }
 
   "Linear with useBias = false" should "pass gradient check w.r.t. x and W" in {
@@ -300,11 +292,10 @@ class LinearSpec extends AnyFlatSpec with Matchers {
     flatten(a.weights) should not be flatten(c.weights)
   }
 
-  private def desvioPadrao(t: scalagrad.core.Tensor): Double = {
+  private def desvioPadrao(t: scalagrad.core.Tensor): Double =
     val v = t.toArray
     val media = v.sum / v.length
     Math.sqrt(v.map(x => (x - media) * (x - media)).sum / v.length)
-  }
 
   "initScale" should "multiply the Kaiming standard deviation" in {
     val semEscala = Linear(64, 64, rng = new Random(3))
@@ -327,4 +318,4 @@ class LinearSpec extends AnyFlatSpec with Matchers {
 
     camada.bias.get.toArray.forall(_ == 0.0) shouldBe true
   }
-}
+end LinearSpec

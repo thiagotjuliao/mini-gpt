@@ -6,7 +6,7 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class LayerNormSpec extends AnyFlatSpec with Matchers {
+class LayerNormSpec extends AnyFlatSpec with Matchers:
 
   private val eps = 1e-5
 
@@ -17,14 +17,13 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     * Independente da implementacao: usada pra conferir o forward e pra montar
     * o xhat esperado nas identidades do backward.
     */
-  private def normalize(row: Array[Double]): Array[Double] = {
+  private def normalize(row: Array[Double]): Array[Double] =
     val h = row.length
     val mu = row.sum / h
     val variance = row.map(v => (v - mu) * (v - mu)).sum / h
     val s = Math.sqrt(variance + eps)
 
     row.map(v => (v - mu) / s)
-  }
 
   /** Pesos distintos e de sinais alternados. Uma perda uniforme nao serve
     * aqui: `forward(x).sum` e identicamente zero em x (ver o teste "should sum
@@ -34,11 +33,11 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     * (acima do limite de 1e-5, ou seja, reprova codigo correto) contra 3.1e-10
     * com a perda ponderada.
     */
-  private def weightsFor(t: Tensor): Tensor = {
-    val data = Array.tabulate(t.size)(i => if i % 2 == 0 then (i + 1).toDouble else -(i + 1).toDouble)
+  private def weightsFor(t: Tensor): Tensor =
+    val data =
+      Array.tabulate(t.size)(i => if i % 2 == 0 then (i + 1).toDouble else -(i + 1).toDouble)
 
     Tensor.make(data, t.shape.toArray)
-  }
 
   private val sampleRows = Seq(
     Array(2.0, 3.0, 6.0, 9.0),
@@ -50,11 +49,10 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     val layerNorm = new LayerNorm(dim = 4)
     val y = layerNorm.forward(tensorOf(sampleRows*))
 
-    for (i <- sampleRows.indices) {
+    for i <- sampleRows.indices do
       val expected = normalize(sampleRows(i))
 
-      for (j <- expected.indices) y.get(i, j) shouldBe expected(j) +- 1e-12
-    }
+      for j <- expected.indices do y.get(i, j) shouldBe expected(j) +- 1e-12
   }
 
   it should "match the verified numeric example from theory/10-layer-norm Secao 2" in {
@@ -62,21 +60,20 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     val y = layerNorm.forward(tensorOf(Array(2.0, 3.0, 6.0, 9.0)))
     val expected = Array(-1.0954, -0.7303, 0.3651, 1.4606)
 
-    for (j <- expected.indices) y.get(0, j) shouldBe expected(j) +- 1e-4
+    for j <- expected.indices do y.get(0, j) shouldBe expected(j) +- 1e-4
   }
 
   it should "produce rows with mean 0 and variance 1 while gamma=1 and beta=0" in {
     val layerNorm = new LayerNorm(dim = 4)
     val y = layerNorm.forward(tensorOf(sampleRows*))
 
-    for (i <- sampleRows.indices) {
+    for i <- sampleRows.indices do
       val row = (0 until 4).map(j => y.get(i, j))
       val mean = row.sum / 4
       val variance = row.map(v => (v - mean) * (v - mean)).sum / 4
 
       mean shouldBe 0.0 +- 1e-12
       variance shouldBe 1.0 +- 1e-4 // nao e 1 exato por causa do eps
-    }
   }
 
   it should "be invariant to scaling and shifting of the input" in {
@@ -89,10 +86,9 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     val yScaled = layerNorm.forward(tensorOf(original.map(_ * 100)))
     val yShifted = layerNorm.forward(tensorOf(original.map(_ + 1000)))
 
-    for (j <- original.indices) {
+    for j <- original.indices do
       yScaled.get(0, j) shouldBe y.get(0, j) +- 1e-4
       yShifted.get(0, j) shouldBe y.get(0, j) +- 1e-4
-    }
   }
 
   it should "return zeros instead of NaN for a constant row" in {
@@ -100,10 +96,9 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     val layerNorm = new LayerNorm(dim = 4)
     val y = layerNorm.forward(tensorOf(Array(7.0, 7.0, 7.0, 7.0)))
 
-    for (j <- 0 until 4) {
+    for j <- 0 until 4 do
       y.get(0, j).isNaN shouldBe false
       y.get(0, j) shouldBe 0.0 +- 1e-12
-    }
   }
 
   it should "sum to zero across every row" in {
@@ -115,9 +110,7 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     val layerNorm = new LayerNorm(dim = 4)
     val y = layerNorm.forward(tensorOf(sampleRows*))
 
-    for (i <- sampleRows.indices) {
-      (0 until 4).map(j => y.get(i, j)).sum shouldBe 0.0 +- 1e-12
-    }
+    for i <- sampleRows.indices do (0 until 4).map(j => y.get(i, j)).sum shouldBe 0.0 +- 1e-12
   }
 
   it should "preserve the input shape for rank 1, 2 and 3" in {
@@ -149,10 +142,9 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
 
     // as duas sequencias estao em escalas muito diferentes e mesmo assim saem
     // identicas: cada uma usou so as proprias estatisticas (theory Secao 7).
-    for (j <- expected.indices) {
+    for j <- expected.indices do
       y.get(0, 0, j) shouldBe expected(j) +- 1e-4
       y.get(1, 0, j) shouldBe expected(j) +- 1e-4
-    }
   }
 
   it should "reject a rank-0 tensor" in {
@@ -160,13 +152,17 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     // senao sai um erro cru de indice sem contexto (mesmo bug do indexSelect).
     val layerNorm = new LayerNorm(dim = 4)
 
-    an[IllegalArgumentException] should be thrownBy layerNorm.forward(Tensor.make(Array(1.0), Array()))
+    an[IllegalArgumentException] should be thrownBy layerNorm.forward(
+      Tensor.make(Array(1.0), Array())
+    )
   }
 
   it should "reject an input whose last dimension is not dim" in {
     val layerNorm = new LayerNorm(dim = 4)
 
-    an[IllegalArgumentException] should be thrownBy layerNorm.forward(tensorOf(Array(1.0, 2.0, 3.0)))
+    an[IllegalArgumentException] should be thrownBy layerNorm.forward(
+      tensorOf(Array(1.0, 2.0, 3.0))
+    )
   }
 
   "LayerNorm.parameters" should "return exactly [gamma, beta], as ones and zeros, both trainable" in {
@@ -176,11 +172,11 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
 
     val gamma = layerNorm.parameters(0)
     gamma.shape(0) shouldBe 6
-    for (i <- 0 until 6) gamma.get(i) shouldBe 1.0
+    for i <- 0 until 6 do gamma.get(i) shouldBe 1.0
 
     val beta = layerNorm.parameters(1)
     beta.shape(0) shouldBe 6
-    for (i <- 0 until 6) beta.get(i) shouldBe 0.0
+    for i <- 0 until 6 do beta.get(i) shouldBe 0.0
 
     layerNorm.parameters.foreach(p => p.requiresGradient shouldBe true)
   }
@@ -217,13 +213,12 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     val x = Tensor.make(sampleRows.flatten.toArray, Array(3, 4), requiresGradient = true)
     val w = weightsFor(x)
 
-    ((layerNorm.forward(x) * w).sum).backward()
+    (layerNorm.forward(x) * w).sum.backward()
 
-    for (i <- sampleRows.indices) {
+    for i <- sampleRows.indices do
       val rowSum = (0 until 4).map(j => x.gradient(x.index(i, j))).sum
 
       rowSum shouldBe 0.0 +- 1e-12
-    }
   }
 
   it should "produce a gradient orthogonal to xhat within each row" in {
@@ -233,13 +228,12 @@ class LayerNormSpec extends AnyFlatSpec with Matchers {
     val x = Tensor.make(sampleRows.flatten.toArray, Array(3, 4), requiresGradient = true)
     val w = weightsFor(x)
 
-    ((layerNorm.forward(x) * w).sum).backward()
+    (layerNorm.forward(x) * w).sum.backward()
 
-    for (i <- sampleRows.indices) {
+    for i <- sampleRows.indices do
       val xhat = normalize(sampleRows(i))
       val projection = (0 until 4).map(j => x.gradient(x.index(i, j)) * xhat(j)).sum
 
       projection shouldBe 0.0 +- 1e-4
-    }
   }
-}
+end LayerNormSpec

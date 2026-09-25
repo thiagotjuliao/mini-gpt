@@ -2,13 +2,13 @@ package scalagrad.ops
 
 import scalagrad.core.*
 
-private[ops] trait ReduceOps {
+private[ops] trait ReduceOps:
 
   /** Fábrica compartilhada por `sum`/`mean`/`max`: reduz `t1` a um tensor
     * escalar `value`; `localGrad(i)` devolve quanto a posição `i` de `t1`
     * contribuiu, multiplicado pelo gradiente escalar recebido.
     */
-  private def reduce(t1: Tensor)(value: Double)(localGrad: Int => Double): Tensor = {
+  private def reduce(t1: Tensor)(value: Double)(localGrad: Int => Double): Tensor =
     val data = Array(value)
     val grad = Gradient.zeros(1)
     val reqGrad = t1.requiresGradient && Tensor.gradEnabled
@@ -20,7 +20,6 @@ private[ops] trait ReduceOps {
           t1.gradient.accumulate(i, localGrad(i) * grad(0))
         }
     }
-  }
 
   /** Fábrica compartilhada por `sum(dim)`/`mean(dim)`: reduz `t1` ao longo de
     * um único eixo `dim` (mantendo-o como tamanho 1 se `keepDim`, removendo-o
@@ -34,7 +33,7 @@ private[ops] trait ReduceOps {
     * Exemplo numérico (valores distintos por fatia, forward e backward):
     * theory/03-elementary-operations/03-elementary-operations.md §3.
     */
-  private def reduceDim(t1: Tensor, dim: Int, keepDim: Boolean)(scale: Double): Tensor = {
+  private def reduceDim(t1: Tensor, dim: Int, keepDim: Boolean)(scale: Double): Tensor =
     val shape = if keepDim then t1.shape.updated(dim, 1) else t1.shape.crop(dim)
 
     val raw = Array.fill(shape.size)(0.0)
@@ -54,7 +53,6 @@ private[ops] trait ReduceOps {
           t1.gradient.accumulate(i, scale * grad(t1.shape.groupIndex(t1.unravelIndex(i), dim)))
         }
     }
-  }
 
   /** Valores de `t` em ordem canônica. `reduce` acumula gradiente por índice
     * canônico, então ler `t.data` direto -- que é indexado pelas strides reais
@@ -64,25 +62,22 @@ private[ops] trait ReduceOps {
     */
   private def canonicalValues(t: Tensor): Array[Double] = t.contiguous.data
 
-  extension (t1: Tensor) {
+  extension (t1: Tensor)
     def sum: Tensor = reduce(t1)(canonicalValues(t1).sum)(_ => 1.0)
 
-    def mean: Tensor = {
+    def mean: Tensor =
       val n = t1.size
       reduce(t1)(canonicalValues(t1).sum / n)(_ => 1.0 / n)
-    }
 
-    def max: Tensor = {
+    def max: Tensor =
       val values = canonicalValues(t1)
       val (maxValue, maxIdx) = values.zipWithIndex.foldLeft((Double.NegativeInfinity, -1)) {
         case ((bestV, bestI), (v, i)) => if v > bestV then (v, i) else (bestV, bestI)
       }
       reduce(t1)(maxValue)(i => if i == maxIdx then 1.0 else 0.0)
-    }
 
     def sum(dim: Int, keepDim: Boolean = false): Tensor = reduceDim(t1, dim, keepDim)(1.0)
 
     def mean(dim: Int, keepDim: Boolean = false): Tensor =
       reduceDim(t1, dim, keepDim)(1.0 / t1.shape(dim))
-  }
-}
+end ReduceOps

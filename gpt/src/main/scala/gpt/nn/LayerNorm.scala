@@ -3,7 +3,7 @@ package gpt.nn
 import scalagrad.core.Tensor
 import scalagrad.ops.tensor.*
 
-final class LayerNorm(dim: Int, eps: Double = 1e-5) {
+final class LayerNorm(dim: Int, eps: Double = 1e-5):
   private val gamma = Tensor.ones(Array(dim), requiresGradient = true)
   private val beta = Tensor.zeros(Array(dim), requiresGradient = true)
 
@@ -12,7 +12,7 @@ final class LayerNorm(dim: Int, eps: Double = 1e-5) {
   private val epsT = Tensor.fill(Array(1), eps)
   val parameters: List[Tensor] = List(gamma, beta)
 
-  def forward(x: Tensor): Tensor = {
+  def forward(x: Tensor): Tensor =
     require(
       x.rank >= 1,
       s"The input tensor for this layer must have at least 1 dimension, but got rank ${x.rank}."
@@ -28,5 +28,4 @@ final class LayerNorm(dim: Int, eps: Double = 1e-5) {
     val variance = xc.pow(2).mean(axis, keepDim = true)
     val xhat = xc / (variance + epsT).pow(0.5)
     xhat * gamma + beta
-  }
-}
+end LayerNorm

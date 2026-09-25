@@ -30,18 +30,17 @@ import scala.util.{Random, Using}
   * momento em zero, e a correção de viés volta a agir como se fosse o primeiro
   * passo (theory/18-training-loop §6).
   */
-object Checkpoint {
+object Checkpoint:
   private val Magic = 0x6d696e69 // "mini"
   private val Version = 2
 
-  private def writeConfig(out: DataOutputStream, c: GPTConfig): Unit = {
+  private def writeConfig(out: DataOutputStream, c: GPTConfig): Unit =
     out.writeInt(c.vocabSize)
     out.writeInt(c.dModel)
     out.writeInt(c.nHeads)
     out.writeInt(c.nLayers)
     out.writeInt(c.contextLength)
     out.writeInt(c.expansion)
-  }
 
   private def readConfig(in: DataInputStream): GPTConfig =
     GPTConfig(
@@ -59,7 +58,7 @@ object Checkpoint {
       readHeader(in)._1
     }
 
-  private def readHeader(in: DataInputStream): (GPTConfig, Int, Int, Boolean) = {
+  private def readHeader(in: DataInputStream): (GPTConfig, Int, Int, Boolean) =
     val magic = in.readInt()
     require(magic == Magic, f"Not a mini-gpt checkpoint: unexpected magic 0x$magic%08x.")
 
@@ -72,9 +71,8 @@ object Checkpoint {
     val hasMoments = in.readBoolean()
 
     (config, t, count, hasMoments)
-  }
 
-  def save(file: File, model: GPT, optimizer: AdamW): Unit = {
+  def save(file: File, model: GPT, optimizer: AdamW): Unit =
     val parameters = model.parameters
     val moments = optimizer.state
     val hasMoments = parameters.forall(moments.contains)
@@ -99,24 +97,23 @@ object Checkpoint {
           v.foreach(out.writeDouble)
       }
     }
-  }
+  end save
 
   /** Constrói o modelo a partir da configuração guardada no arquivo e carrega
     * os pesos nele. É o caminho para gerar texto de um checkpoint sem precisar
     * lembrar com que dimensões o modelo foi treinado.
     */
-  def loadModel(file: File, rng: Random = new Random()): (GPT, AdamW) = {
+  def loadModel(file: File, rng: Random = new Random()): (GPT, AdamW) =
     val model = new GPT(configOf(file), rng)
     val optimizer = load(file, model, new AdamW(model.parameters))
 
     model -> optimizer
-  }
 
   /** Restaura no `model` e no `optimizer` recebidos, que precisam ter sido
     * construídos com a mesma configuração. Devolve o otimizador com `t` e os
     * momentos do arquivo; o modelo é atualizado in-place, via `updateData`.
     */
-  def load(file: File, model: GPT, optimizer: AdamW): AdamW = {
+  def load(file: File, model: GPT, optimizer: AdamW): AdamW =
     val parameters = model.parameters
 
     Using.resource(
@@ -167,5 +164,5 @@ object Checkpoint {
         restored.flatten.toMap
       )
     }
-  }
-}
+  end load
+end Checkpoint

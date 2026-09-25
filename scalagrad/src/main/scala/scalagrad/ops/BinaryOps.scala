@@ -2,7 +2,7 @@ package scalagrad.ops
 
 import scalagrad.core.*
 
-private[ops] trait BinaryOps {
+private[ops] trait BinaryOps:
 
   /** Fábrica compartilhada por `+`/`-`/`*`/`/`: calcula o shape de saída
     * broadcastado, o forward lendo os dois operandos através das views
@@ -17,7 +17,7 @@ private[ops] trait BinaryOps {
   private def binary(t1: Tensor, t2: Tensor)(op: (Double, Double) => Double)(
       localGrad1: (Double, Double, Double) => Double,
       localGrad2: (Double, Double, Double) => Double
-  ): Tensor = {
+  ): Tensor =
     val shape = Shape.broadcast(t1.shape, t2.shape)
     val t1B = t1.broadcastTo(shape)
     val t2B = t2.broadcastTo(shape)
@@ -47,13 +47,12 @@ private[ops] trait BinaryOps {
         t1.gradient.accumulateAll(Broadcast.unbroadcast(g1B, shape, t1.shape))
         t2.gradient.accumulateAll(Broadcast.unbroadcast(g2B, shape, t2.shape))
     }
-  }
+  end binary
 
-  extension (t1: Tensor) {
+  extension (t1: Tensor)
     def +(t2: Tensor): Tensor = binary(t1, t2)(_ + _)((_, _, g) => g, (_, _, g) => g)
     def -(t2: Tensor): Tensor = binary(t1, t2)(_ - _)((_, _, g) => g, (_, _, g) => -g)
     def *(t2: Tensor): Tensor = binary(t1, t2)(_ * _)((_, b, g) => b * g, (a, _, g) => a * g)
     def /(t2: Tensor): Tensor =
       binary(t1, t2)(_ / _)((_, b, g) => g / b, (a, b, g) => g * (-a / (b * b)))
-  }
-}
+end BinaryOps

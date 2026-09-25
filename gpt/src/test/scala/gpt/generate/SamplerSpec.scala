@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.util.Random
 
-class SamplerSpec extends AnyFlatSpec with Matchers {
+class SamplerSpec extends AnyFlatSpec with Matchers:
 
   private val logits = Array(2.0, 1.0, 0.0, -1.0)
 
@@ -118,9 +118,8 @@ class SamplerSpec extends AnyFlatSpec with Matchers {
 
   it should "stay in bounds when the uniform draw lands past the accumulated sum" in {
     // a soma acumulada pode parar um epsilon abaixo de 1 por arredondamento
-    val quaseUm = new Random {
+    val quaseUm = new Random:
       override def nextDouble(): Double = 0.9999999999999999
-    }
 
     val escolha = Sampler.next(logits, Temperature(1.0), quaseUm)
 
@@ -139,4 +138,4 @@ class SamplerSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy
       Sampler.next(Array.empty, Greedy, new Random())
   }
-}
+end SamplerSpec

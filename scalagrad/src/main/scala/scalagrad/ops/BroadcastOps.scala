@@ -2,7 +2,7 @@ package scalagrad.ops
 
 import scalagrad.core.{Shape, Gradient}
 
-object Broadcast {
+object Broadcast:
 
   /** Colapsa `grad` (no shape "esticado" `gradShape`, resultado de uma
     * operação broadcastada) de volta pro shape original menor `targetShape`,
@@ -11,7 +11,7 @@ object Broadcast {
     * tamanho 1) com exemplo numérico: ver
     * theory/03-elementary-operations/03-elementary-operations.md §4.
     */
-  def unbroadcast(grad: Gradient, gradShape: Shape, targetShape: Shape): Gradient = {
+  def unbroadcast(grad: Gradient, gradShape: Shape, targetShape: Shape): Gradient =
     val result = Gradient.zeros(targetShape)
 
     val padLen = Math.max(0, gradShape.rank - targetShape.rank)
@@ -29,5 +29,4 @@ object Broadcast {
     }
 
     result
-  }
-}
+end Broadcast

@@ -9,7 +9,7 @@ import scala.util.Random
 /** Geração autoregressiva: a saída de um passo vira a entrada do seguinte
   * (ver theory/19-inference-generation/19-inference-generation.md §1).
   */
-final class Generator(model: GPT, randomizer: Random = new Random()) {
+final class Generator(model: GPT, randomizer: Random = new Random()):
 
   /** Gera `maxNewTokens` tokens a partir de `prompt`, devolvendo o prompt e a
     * continuação juntos.
@@ -21,7 +21,7 @@ final class Generator(model: GPT, randomizer: Random = new Random()) {
       maxNewTokens: Int,
       strategy: SamplingStrategy = Greedy,
       onToken: Int => Unit = _ => ()
-  ): Array[Int] = {
+  ): Array[Int] =
     require(prompt.nonEmpty, "The prompt needs at least 1 token to condition on.")
     require(maxNewTokens >= 0, s"maxNewTokens cannot be negative, but got $maxNewTokens.")
     require(
@@ -39,7 +39,6 @@ final class Generator(model: GPT, randomizer: Random = new Random()) {
         }
         .toArray
     }
-  }
 
   def generate(prompt: String, maxNewTokens: Int, tokenizer: Tokenizer): String =
     generate(prompt, maxNewTokens, tokenizer, Greedy)
@@ -58,12 +57,11 @@ final class Generator(model: GPT, randomizer: Random = new Random()) {
     * contexto: o modelo recusa entradas mais longas, e os tokens mais antigos
     * são os que menos importam para a próxima previsão.
     */
-  private def lastLogits(tokens: Vector[Int]): Array[Double] = {
+  private def lastLogits(tokens: Vector[Int]): Array[Double] =
     val context = tokens.takeRight(model.contextLength)
     val input = Tensor.make(context.map(_.toDouble).toArray, Array(1, context.length))
     val logits = model.forward(input)
     val last = context.length - 1
 
     Array.tabulate(model.vocabSize)(v => logits.get(0, last, v))
-  }
-}
+end Generator

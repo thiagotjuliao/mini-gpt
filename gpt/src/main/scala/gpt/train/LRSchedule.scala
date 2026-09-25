@@ -3,7 +3,7 @@ package gpt.train
 /** A taxa de aprendizado passo a passo: rampa linear no aquecimento, cosseno
   * depois (ver theory/18-training-loop/18-training-loop.md §3).
   */
-object LRSchedule {
+object LRSchedule:
 
   /** `step` é 1-based, igual ao `t` do `AdamW`. Depois de `totalSteps` a taxa
     * fica em `lrMin` em vez de continuar caindo -- um treino que passa do
@@ -15,7 +15,7 @@ object LRSchedule {
       lrMax: Double = 3e-4,
       lrMin: Double = 3e-5,
       warmupSteps: Int = 0
-  ): Double = {
+  ): Double =
     require(step >= 1, s"Step is 1-based, but got $step.")
     require(totalSteps >= 1, s"totalSteps must be at least 1, but got $totalSteps.")
     require(
@@ -31,5 +31,4 @@ object LRSchedule {
       val clamped = Math.min(Math.max(progress, 0.0), 1.0)
 
       lrMin + 0.5 * (lrMax - lrMin) * (1 + Math.cos(Math.PI * clamped))
-  }
-}
+end LRSchedule

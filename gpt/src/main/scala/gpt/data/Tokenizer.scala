@@ -4,7 +4,7 @@ import java.io.File
 import scala.io.Source
 import scala.util.Using
 
-final private[gpt] class Tokenizer private (charToIdx: Map[Char, Int]) {
+private[gpt] final class Tokenizer private (charToIdx: Map[Char, Int]):
   private val idxToChar = charToIdx.map((k, v) => (v, k))
   val vocabSize: Int = charToIdx.size
 
@@ -13,7 +13,7 @@ final private[gpt] class Tokenizer private (charToIdx: Map[Char, Int]) {
     */
   val alphabet: Set[Char] = charToIdx.keySet
 
-  def encode(input: String): Array[Int] = {
+  def encode(input: String): Array[Int] =
     input.toArray.zipWithIndex.map { case (c, i) =>
       charToIdx.getOrElse(
         c,
@@ -22,9 +22,8 @@ final private[gpt] class Tokenizer private (charToIdx: Map[Char, Int]) {
         )
       )
     }
-  }
 
-  def decode(input: Array[Int]): String = {
+  def decode(input: Array[Int]): String =
     input.map { i =>
       idxToChar.getOrElse(
         i,
@@ -33,13 +32,11 @@ final private[gpt] class Tokenizer private (charToIdx: Map[Char, Int]) {
         )
       )
     }.mkString
-  }
-}
+end Tokenizer
 
-object Tokenizer {
+object Tokenizer:
   def charLevel(corpus: String): Tokenizer =
     new Tokenizer(corpus.distinct.sorted.zipWithIndex.toMap)
 
   def charLevel(file: File): Tokenizer =
     charLevel(Using.resource(Source.fromFile(file))(_.mkString))
-}

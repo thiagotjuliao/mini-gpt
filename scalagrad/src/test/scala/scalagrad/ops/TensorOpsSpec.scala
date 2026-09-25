@@ -6,7 +6,7 @@ import scalagrad.ops.tensor.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class TensorOpsSpec extends AnyFlatSpec with Matchers {
+class TensorOpsSpec extends AnyFlatSpec with Matchers:
 
   private def trainable(value: Double): Tensor =
     Tensor.make(Array(value), Array(1), requiresGradient = true)
@@ -736,7 +736,7 @@ class TensorOpsSpec extends AnyFlatSpec with Matchers {
 
     c.shape.toList shouldBe List(B, H, M, N)
 
-    for (i <- 0 until B; h <- 0 until H; m <- 0 until M; n <- 0 until N)
+    for i <- 0 until B; h <- 0 until H; m <- 0 until M; n <- 0 until N do
       withClue(s"posicao (b=$i, h=$h, m=$m, n=$n): ") {
         val expected = (0 until K).map(k => a.get(i, h, m, k) * b.get(i, h, k, n)).sum
         c.get(i, h, m, n) shouldBe expected +- 1e-12
@@ -753,7 +753,7 @@ class TensorOpsSpec extends AnyFlatSpec with Matchers {
 
     c.shape.toList shouldBe List(B, H, M, N)
 
-    for (i <- 0 until B; h <- 0 until H; m <- 0 until M; n <- 0 until N)
+    for i <- 0 until B; h <- 0 until H; m <- 0 until M; n <- 0 until N do
       withClue(s"posicao (b=$i, h=$h, m=$m, n=$n): ") {
         val expected = (0 until K).map(k => a.get(i, h, m, k) * w.get(k, n)).sum
         c.get(i, h, m, n) shouldBe expected +- 1e-12
@@ -780,7 +780,7 @@ class TensorOpsSpec extends AnyFlatSpec with Matchers {
 
     scores.shape.toList shouldBe List(B, H, T, T)
 
-    for (b <- 0 until B; h <- 0 until H; i <- 0 until T; j <- 0 until T)
+    for b <- 0 until B; h <- 0 until H; i <- 0 until T; j <- 0 until T do
       withClue(s"posicao (b=$b, h=$h, i=$i, j=$j): ") {
         val expected = (0 until dHead).map(d => q.get(b, h, i, d) * k.get(b, h, d, j)).sum
         scores.get(b, h, i, j) shouldBe expected +- 1e-12
@@ -812,10 +812,9 @@ class TensorOpsSpec extends AnyFlatSpec with Matchers {
     out.backward()
 
     // dW[k][n] = soma sobre as 8 linhas de a[.., m, k] * weights[.., m, n]
-    val expected = for (k <- 0 until 2; n <- 0 until 2) yield {
-      (for (i <- 0 until 2; h <- 0 until 2; m <- 0 until 2)
-        yield a.get(i, h, m, k) * weights.get(i, h, m, n)).sum
-    }
+    val expected = for k <- 0 until 2; n <- 0 until 2
+    yield (for i <- 0 until 2; h <- 0 until 2; m <- 0 until 2
+    yield a.get(i, h, m, k) * weights.get(i, h, m, n)).sum
 
     w.gradient.toList shouldBe expected.toList
   }
@@ -1042,12 +1041,11 @@ class TensorOpsSpec extends AnyFlatSpec with Matchers {
     val loss = (a.softmax(1) * dOut).sum
     loss.backward()
 
-    def softmaxDxRow(xs: Array[Double], d: Array[Double]): Array[Double] = {
+    def softmaxDxRow(xs: Array[Double], d: Array[Double]): Array[Double] =
       val exps = xs.map(Math.exp)
       val s = exps.map(_ / exps.sum)
       val dot = s.zip(d).map(_ * _).sum
       s.zip(d).map { case (si, di) => si * (di - dot) }
-    }
     val expected = softmaxDxRow(Array(1.0, 2.0, 3.0), Array(0.1, 0.2, 0.3)) ++
       softmaxDxRow(Array(4.0, 5.0, 6.0), Array(0.5, 0.3, 0.2))
 
@@ -1110,12 +1108,11 @@ class TensorOpsSpec extends AnyFlatSpec with Matchers {
     val loss = (a.logSoftmax(1) * dOut).sum
     loss.backward()
 
-    def logSoftmaxDxRow(xs: Array[Double], d: Array[Double]): Array[Double] = {
+    def logSoftmaxDxRow(xs: Array[Double], d: Array[Double]): Array[Double] =
       val exps = xs.map(Math.exp)
       val s = exps.map(_ / exps.sum)
       val sumD = d.sum
       d.zip(s).map { case (di, si) => di - si * sumD }
-    }
     val expected = logSoftmaxDxRow(Array(1.0, 2.0, 3.0), Array(0.1, 0.2, 0.3)) ++
       logSoftmaxDxRow(Array(4.0, 5.0, 6.0), Array(0.5, 0.3, 0.2))
 
@@ -1179,4 +1176,4 @@ class TensorOpsSpec extends AnyFlatSpec with Matchers {
 
     table.indexSelect(Array(0, 1)).requiresGradient shouldBe false
   }
-}
+end TensorOpsSpec

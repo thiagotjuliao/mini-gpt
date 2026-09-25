@@ -9,7 +9,7 @@ final class MultiHeadAttention(
     nHeads: Int,
     rng: Random = new Random(),
     residualScale: Double = 1.0
-) {
+):
   require(
     dModel % nHeads == 0,
     s"""
@@ -31,7 +31,7 @@ final class MultiHeadAttention(
   private def split(t: Tensor): Tensor =
     t.reshape(Array(t.shape(0), t.shape(1), nHeads, dHead)).transpose(1, 2)
 
-  private def validate(x: Tensor): Unit = {
+  private def validate(x: Tensor): Unit =
     require(
       x.rank == 3,
       s"The input tensor for this layer must have 3 dimensions (B, T, dModel), but got rank ${x.rank}."
@@ -41,14 +41,13 @@ final class MultiHeadAttention(
       x.shape.last == dModel,
       s"Last dimension for the input tensor must be equal to dModel = $dModel, but got ${x.shape.last}."
     )
-  }
 
   /** Pesos de atencao por cabeca, `[B, nHeads, T, T]`. Janela de diagnostico:
     * o `forward` consome o resultado, e os testes de propriedade conferem aqui
     * o que o gradient check nao ve -- soma das linhas e causalidade
     * (ver theory/11-attention/11-attention.md secao 8).
     */
-  def attentionWeights(x: Tensor): Tensor = {
+  def attentionWeights(x: Tensor): Tensor =
     validate(x)
 
     val qh = split(query.forward(x))
@@ -60,9 +59,8 @@ final class MultiHeadAttention(
     val scores = qh.matmul(kh.transpose()) / scale
 
     (scores + Masks.causalMask(x.shape(1))).softmax(scores.rank - 1)
-  }
 
-  def forward(x: Tensor): Tensor = {
+  def forward(x: Tensor): Tensor =
     validate(x)
 
     val weights = attentionWeights(x)
@@ -71,5 +69,4 @@ final class MultiHeadAttention(
 
     val merged = context.transpose(1, 2).reshape(Array(x.shape(0), x.shape(1), dModel))
     outProj.forward(merged)
-  }
-}
+end MultiHeadAttention

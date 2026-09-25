@@ -39,7 +39,7 @@ private def doubleArg(args: Seq[String], name: String, default: Double): Double 
 private def stringArg(args: Seq[String], name: String, default: String): String =
   args.sliding(2).collectFirst { case Seq(`name`, v) => v }.getOrElse(default)
 
-@main def train(args: String*): Unit = {
+@main def train(args: String*): Unit =
   val corpusPath = stringArg(args, "--corpus", "gpt/data/corpus.txt")
   val checkpointPath = stringArg(args, "--checkpoint", "gpt/data/model.bin")
   val steps = intArg(args, "--steps", 3000)
@@ -96,7 +96,9 @@ private def stringArg(args: Seq[String], name: String, default: String): String 
 
   println()
   println(f"treino terminado em $elapsed%.1f s (${elapsed / steps * 1000}%.0f ms por passo)")
-  println(f"perda: ${result.losses.head}%.4f no primeiro passo, ${result.losses.last}%.4f no último")
+  println(
+    f"perda: ${result.losses.head}%.4f no primeiro passo, ${result.losses.last}%.4f no último"
+  )
   println(s"checkpoint salvo em $checkpointPath")
   println()
   println("amostra do que o modelo aprendeu:")
@@ -107,9 +109,9 @@ private def stringArg(args: Seq[String], name: String, default: String): String 
   println()
   println("-" * 60)
   println(s"""para conversar: sbt "gpt/runMain gpt.cli.chat"""")
-}
+end train
 
-@main def chat(args: String*): Unit = {
+@main def chat(args: String*): Unit =
   val corpusPath = stringArg(args, "--corpus", "gpt/data/corpus.txt")
   val checkpointPath = stringArg(args, "--checkpoint", "gpt/data/model.bin")
   val seed = intArg(args, "--seed", 7)
@@ -134,7 +136,7 @@ private def stringArg(args: Seq[String], name: String, default: String): String 
     println()
 
     chatLoop(new Generator(model, rng), tokenizer, ChatState())
-}
+end chat
 
 /** O que atravessa a conversa: os ajustes de amostragem e o texto já escrito.
   *
@@ -147,21 +149,19 @@ private case class ChatState(
     topK: Int = 20,
     maxNewTokens: Int = 200,
     history: Vector[Int] = Vector.empty
-) {
+):
   def strategy: SamplingStrategy =
     if temperature <= 0.01 then Greedy
     else if topK > 0 then TopK(topK, temperature)
     else Temperature(temperature)
 
-  def summary: String = {
+  def summary: String =
     val sampling =
       if temperature <= 0.01 then "greedy"
       else if topK > 0 then f"top-k $topK, T = $temperature%.2f"
       else f"T = $temperature%.2f"
 
     s"[$sampling, $maxNewTokens tokens]"
-  }
-}
 
 private val helpText =
   """comandos:
@@ -173,11 +173,11 @@ private val helpText =
     |  :sair        encerra""".stripMargin
 
 @annotation.tailrec
-private def chatLoop(generator: Generator, tokenizer: Tokenizer, state: ChatState): Unit = {
+private def chatLoop(generator: Generator, tokenizer: Tokenizer, state: ChatState): Unit =
   print(s"${state.summary} > ")
   Console.out.flush()
 
-  Option(StdIn.readLine()).map(_.trim) match {
+  Option(StdIn.readLine()).map(_.trim) match
     case None | Some(":sair") | Some(":quit") =>
       println("até mais.")
 
@@ -193,14 +193,12 @@ private def chatLoop(generator: Generator, tokenizer: Tokenizer, state: ChatStat
 
     case Some(text) =>
       chatLoop(generator, tokenizer, respond(generator, tokenizer, state, text))
-  }
-}
 
-private def applyCommand(command: String, state: ChatState): ChatState = {
+private def applyCommand(command: String, state: ChatState): ChatState =
   val parts = command.split("\\s+")
   val value = parts.lift(1)
 
-  (parts.head, value) match {
+  (parts.head, value) match
     case (":temp", Some(v)) =>
       v.toDoubleOption.fold(invalidValue(v, state))(t => state.copy(temperature = t))
 
@@ -218,27 +216,23 @@ private def applyCommand(command: String, state: ChatState): ChatState = {
       println(s"não conheço `$command`.")
       println(helpText)
       state
-  }
-}
 
-private def invalidValue(value: String, state: ChatState): ChatState = {
+private def invalidValue(value: String, state: ChatState): ChatState =
   println(s"`$value` não é um número.")
   state
-}
 
 private def respond(
     generator: Generator,
     tokenizer: Tokenizer,
     state: ChatState,
     text: String
-): ChatState = {
+): ChatState =
   // O tokenizador é de caractere e lança em símbolo desconhecido. Filtrar aqui
   // é mais gentil que recusar a linha inteira por causa de um emoji.
   val known = text.filter(tokenizer.alphabet.contains)
   val dropped = text.length - known.length
 
-  if dropped > 0 then
-    println(s"(ignorei $dropped caractere(s) fora do vocabulário do corpus)")
+  if dropped > 0 then println(s"(ignorei $dropped caractere(s) fora do vocabulário do corpus)")
 
   if known.isEmpty then
     println("(preciso de pelo menos um caractere que o corpus contenha)")
@@ -252,14 +246,13 @@ private def respond(
       input.toArray,
       state.maxNewTokens,
       state.strategy,
-      token => {
+      token =>
         print(tokenizer.decode(Array(token)))
         Console.out.flush()
-      }
     )
 
     println()
     println()
 
     state.copy(history = output.toVector)
-}
+end respond

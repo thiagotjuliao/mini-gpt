@@ -6,15 +6,14 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class EmbeddingSpec extends AnyFlatSpec with Matchers {
+class EmbeddingSpec extends AnyFlatSpec with Matchers:
 
-  private def tokensOf(rows: Array[Int]*): Tensor = {
+  private def tokensOf(rows: Array[Int]*): Tensor =
     val batchSize = rows.length
     val seqLen = rows.head.length
     val data = rows.flatten.map(_.toDouble).toArray
 
     Tensor.make(data, Array(batchSize, seqLen))
-  }
 
   "Embedding.embed" should "produce output of shape (batchSize, seqLen, dModel)" in {
     val embedding = new Embedding(vocabSize = 10, dModel = 4, contextLength = 5)
@@ -35,10 +34,9 @@ class EmbeddingSpec extends AnyFlatSpec with Matchers {
     val tokenTable = embedding.parameters(0)
     val positionTable = embedding.parameters(1)
 
-    for (b <- rows.indices; t <- rows.head.indices; d <- 0 until dModel) {
+    for b <- rows.indices; t <- rows.head.indices; d <- 0 until dModel do
       val expected = tokenTable.get(rows(b)(t), d) + positionTable.get(t, d)
       y.get(b, t, d) shouldBe expected +- 1e-12
-    }
   }
 
   it should "give the same token different vectors at different positions" in {
@@ -54,10 +52,9 @@ class EmbeddingSpec extends AnyFlatSpec with Matchers {
 
     slot0 should not equal slot1
 
-    for (d <- 0 until dModel) {
+    for d <- 0 until dModel do
       val positionalGap = positionTable.get(0, d) - positionTable.get(1, d)
       (slot0(d) - slot1(d)) shouldBe positionalGap +- 1e-12
-    }
   }
 
   it should "reuse the same position rows across every sequence in the batch" in {
@@ -70,12 +67,11 @@ class EmbeddingSpec extends AnyFlatSpec with Matchers {
 
     val tokenTable = embedding.parameters(0)
 
-    for (t <- rows.head.indices; d <- 0 until dModel) {
+    for t <- rows.head.indices; d <- 0 until dModel do
       val positionalFirst = y.get(0, t, d) - tokenTable.get(rows(0)(t), d)
       val positionalSecond = y.get(1, t, d) - tokenTable.get(rows(1)(t), d)
 
       positionalFirst shouldBe positionalSecond +- 1e-12
-    }
   }
 
   it should "reject a tokens tensor that is not rank-2" in {
@@ -138,7 +134,7 @@ class EmbeddingSpec extends AnyFlatSpec with Matchers {
     * distintos de proposito: um gradiente uniforme (`.sum` puro) daria o mesmo
     * resultado com as contribuicoes trocadas de posicao.
     */
-  private def runWeightedBackward(): (Tensor, Tensor) = {
+  private def runWeightedBackward(): (Tensor, Tensor) =
     val embedding = new Embedding(sparseVocabSize, sparseDim, contextLength = 4)
     val size = sparseRows.length * sparseRows.head.length * sparseDim
     val weights =
@@ -150,34 +146,31 @@ class EmbeddingSpec extends AnyFlatSpec with Matchers {
     (embedding.forward(tokensOf(sparseRows*)) * weights).sum.backward()
 
     (embedding.parameters(0), weights)
-  }
 
   "Embedding backward" should "leave rows of tokens absent from the batch at exactly zero" in {
     val (tokenTable, _) = runWeightedBackward()
     val used = sparseRows.flatten.toSet
 
-    for (row <- 0 until sparseVocabSize; d <- 0 until sparseDim) {
+    for row <- 0 until sparseVocabSize; d <- 0 until sparseDim do
       val gradient = tokenTable.gradient(tokenTable.index(row, d))
 
       if used.contains(row) then gradient should not be 0.0
       else gradient shouldBe 0.0
-    }
   }
 
   it should "sum every contribution into a row whose token repeats" in {
     val (tokenTable, weights) = runWeightedBackward()
 
-    for (row <- 0 until sparseVocabSize; d <- 0 until sparseDim) {
+    for row <- 0 until sparseVocabSize; d <- 0 until sparseDim do
       val expected = {
-        for {
+        for
           b <- sparseRows.indices
           t <- sparseRows.head.indices
           if sparseRows(b)(t) == row
-        } yield weights.get(b, t, d)
+        yield weights.get(b, t, d)
       }.sum
 
       tokenTable.gradient(tokenTable.index(row, d)) shouldBe expected +- 1e-12
-    }
   }
 
   "Embedding" should "pass gradient check w.r.t. the token table, with a repeated token" in {
@@ -199,4 +192,4 @@ class EmbeddingSpec extends AnyFlatSpec with Matchers {
 
     Gradcheck.run(embedding.parameters(1))(_ => embedding.forward(tokens).sum) should be < 1e-5
   }
-}
+end EmbeddingSpec

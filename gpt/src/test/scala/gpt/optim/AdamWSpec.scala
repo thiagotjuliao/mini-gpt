@@ -4,7 +4,7 @@ import scalagrad.core.Tensor
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class AdamWSpec extends AnyFlatSpec with Matchers {
+class AdamWSpec extends AnyFlatSpec with Matchers:
 
   private val tolerance = 1e-9
 
@@ -28,15 +28,13 @@ class AdamWSpec extends AnyFlatSpec with Matchers {
   /** O `Gradient` so acumula, entao cada passo zera antes de semear o proximo --
     * e o que o loop de treino faz entre os lotes.
     */
-  private def semear(p: Tensor, gradiente: Array[Double]): Unit = {
+  private def semear(p: Tensor, gradiente: Array[Double]): Unit =
     p.gradient.zero()
     gradiente.indices.foreach(i => p.gradient.accumulate(i, gradiente(i)))
-  }
 
-  private def passo(otimizador: AdamW, p: Tensor, gradiente: Array[Double]): AdamW = {
+  private def passo(otimizador: AdamW, p: Tensor, gradiente: Array[Double]): AdamW =
     semear(p, gradiente)
     otimizador.step()
-  }
 
   "AdamW" should "give a first step of exactly lr, whatever the gradient scale" in {
     val p = parametro(valoresIniciais)
@@ -270,4 +268,4 @@ class AdamWSpec extends AnyFlatSpec with Matchers {
 
     an[IllegalArgumentException] should be thrownBy new AdamW(List(p), weightDecay = -0.1)
   }
-}
+end AdamWSpec

@@ -8,22 +8,21 @@ import org.scalatest.matchers.should.Matchers
   * dois nós distintos podem ter o mesmo `name`, e igualdade estrutural os
   * colapsaria num `Set`, mascarando bugs de deduplicação.
   */
-final class Node(val name: String, val previous: Set[Node] = Set()) {
+final class Node(val name: String, val previous: Set[Node] = Set()):
   override def toString: String = name
-}
 
 /** Implemente aqui. Depois de validar contra os testes abaixo, transplante
   * a lógica para dentro de `object Tensor` trocando `Node` por `Tensor`.
   */
-object TopoSort {
-  def sort(root: Node): List[Node] = {
+object TopoSort:
+  def sort(root: Node): List[Node] =
     @scala.annotation.tailrec
     def visit(
         nodes: List[Node],
         visited: Set[Node],
         added: Set[Node],
         sorted: Vector[Node]
-    ): List[Node] = {
+    ): List[Node] =
       if nodes.isEmpty then sorted.toList
       else
         val node = nodes.head
@@ -34,13 +33,10 @@ object TopoSort {
             visit(nodes.tail, visited + node, added + node, sorted :+ node)
           else visit(nodes.tail, visited + node, added, sorted)
         else visit(parents ::: nodes, visited + node, added, sorted)
-    }
 
     visit(List(root), Set(), Set(), Vector())
-  }
-}
 
-class TopologicalSortSpec extends AnyFlatSpec with Matchers {
+class TopologicalSortSpec extends AnyFlatSpec with Matchers:
 
   "topologicalSort" should "visit every reachable node exactly once" in {
     val a = new Node("a")
@@ -71,11 +67,10 @@ class TopologicalSortSpec extends AnyFlatSpec with Matchers {
     val order = TopoSort.sort(root)
     val position = order.zipWithIndex.toMap
 
-    for (node <- order; dep <- node.previous) {
+    for node <- order; dep <- node.previous do
       withClue(s"${dep.name} deveria vir antes de ${node.name}") {
         position(dep) should be < position(node)
       }
-    }
   }
 
   // grafo "diamante": d é dependência compartilhada por x e y.
@@ -111,9 +106,7 @@ class TopologicalSortSpec extends AnyFlatSpec with Matchers {
     val position = order.zipWithIndex.toMap
 
     // em particular, isso falha se `d` for colocado antes de `x` ou de `y`
-    for (node <- order; dep <- node.previous) {
-      position(dep) should be < position(node)
-    }
+    for node <- order; dep <- node.previous do position(dep) should be < position(node)
     order.last shouldBe loss
   }
 
@@ -150,4 +143,4 @@ class TopologicalSortSpec extends AnyFlatSpec with Matchers {
     order.count(_ eq n) shouldBe 1
     order.size shouldBe 5
   }
-}
+end TopologicalSortSpec

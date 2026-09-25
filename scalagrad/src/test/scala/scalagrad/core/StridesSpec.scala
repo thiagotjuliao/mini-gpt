@@ -3,7 +3,7 @@ package scalagrad.core
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class StridesSpec extends AnyFlatSpec with Matchers {
+class StridesSpec extends AnyFlatSpec with Matchers:
 
   "Strides" should "expose length and per-position access via apply" in {
     val st = Strides(3, 1)
@@ -33,4 +33,4 @@ class StridesSpec extends AnyFlatSpec with Matchers {
     Strides(1).leftPad(1, 0).toArray.toList shouldBe List(0, 1)
     Strides(3, 1).leftPad(0, 0).toArray.toList shouldBe List(3, 1)
   }
-}
+end StridesSpec

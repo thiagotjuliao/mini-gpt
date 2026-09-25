@@ -2,8 +2,8 @@ package scalagrad.ops
 
 import scalagrad.core.*
 
-private[ops] trait MatmulOps {
-  extension (t1: Tensor) {
+private[ops] trait MatmulOps:
+  extension (t1: Tensor)
 
     /** Produto matricial com um número qualquer de dimensões de lote.
       *
@@ -18,7 +18,7 @@ private[ops] trait MatmulOps {
       * e lê os operandos pelas strides, então entrada não contígua funciona
       * sem cópia (ver theory/12-multi-head-attention §4).
       */
-    def matmul(t2: Tensor): Tensor = {
+    def matmul(t2: Tensor): Tensor =
       require(
         t1.rank >= 2 && t2.rank >= 2,
         s"matmul needs at least a matrix on each side, " +
@@ -59,14 +59,13 @@ private[ops] trait MatmulOps {
       val leftStep = t1.strides(t1.rank - 1)
       val rightStep = t2.strides(t2.rank - 2)
 
-      def basesFor(out: Int): (Int, Int, Int, Int) = {
+      def basesFor(out: Int): (Int, Int, Int, Int) =
         val lhs = shape.unravelIndex(out)
         val rhs = if sharedRhs then Array(0, lhs(lhs.length - 1)) else lhs
         val left = lhs.updated(lhs.length - 1, 0)
         val right = rhs.updated(rhs.length - 2, 0)
 
         (t1.index(left*), t1.shape.index(left*), t2.index(right*), t2.shape.index(right*))
-      }
 
       val data = Array.tabulate(shape.size) { out =>
         val (leftBase, _, rightBase, _) = basesFor(out)
@@ -88,6 +87,5 @@ private[ops] trait MatmulOps {
             }
           }
       }
-    }
-  }
-}
+  end extension
+end MatmulOps

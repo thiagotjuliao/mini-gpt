@@ -2,7 +2,7 @@ package scalagrad.ops
 
 import scalagrad.core.*
 
-private[ops] trait UnaryOps {
+private[ops] trait UnaryOps:
 
   /** Fábrica compartilhada por `neg`/`pow`/`exp`/`log`/`clamp`: `op` é o forward
     * elemento a elemento; `localGrad(x, fx)` recebe o valor de entrada e o
@@ -11,7 +11,7 @@ private[ops] trait UnaryOps {
     */
   private def unary(
       t1: Tensor
-  )(op: Double => Double)(localGrad: (Double, Double) => Double): Tensor = {
+  )(op: Double => Double)(localGrad: (Double, Double) => Double): Tensor =
     val shape = t1.shape
 
     // Posição em `data` de cada índice canônico. As duas indexações do projeto
@@ -31,9 +31,8 @@ private[ops] trait UnaryOps {
           t1.gradient.accumulate(i, grad(i) * localGrad(t1.data(physical(i)), data(i)))
         }
     }
-  }
 
-  extension (t1: Tensor) {
+  extension (t1: Tensor)
     def neg: Tensor = unary(t1)(x => -x)((_, _) => -1.0)
     def pow(n: Double): Tensor = unary(t1)(Math.pow(_, n))((x, _) => n * Math.pow(x, n - 1))
     def exp: Tensor = unary(t1)(Math.exp)((_, fx) => fx)
@@ -48,14 +47,13 @@ private[ops] trait UnaryOps {
       if x > 0 then 1.0 else 0.0
     }
 
-    def sigmoid: Tensor = {
+    def sigmoid: Tensor =
       val sigma = (x: Double) => 1 / (1 + Math.exp(-x))
       unary(t1)(sigma)((_, fx) => fx * (1 - fx))
-    }
 
     def tanh: Tensor = unary(t1)(Math.tanh)((_, fx) => 1 - Math.pow(fx, 2))
 
-    def gelu: Tensor = {
+    def gelu: Tensor =
       val c = Math.sqrt(2 / Math.PI)
       val u = (x: Double) => c * (x + 0.044715 * Math.pow(x, 3))
       val gelux = (x: Double) => 0.5 * x * (1 + Math.tanh(u(x)))
@@ -66,6 +64,5 @@ private[ops] trait UnaryOps {
 
         0.5 * (1 + t) + 0.5 * x * (1 - Math.pow(t, 2)) * uPrime
       }
-    }
-  }
-}
+  end extension
+end UnaryOps

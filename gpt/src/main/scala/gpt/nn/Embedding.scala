@@ -9,7 +9,7 @@ final class Embedding(
     dModel: Int,
     contextLength: Int,
     rng: Random = new Random()
-) {
+):
   val tokenTable =
     Tensor.randn(Array(vocabSize, dModel), std = 0.02, requiresGradient = true, rng = rng)
 
@@ -18,7 +18,7 @@ final class Embedding(
 
   val parameters: List[Tensor] = List(tokenTable, positionTable)
 
-  def forward(tokens: Tensor): Tensor = {
+  def forward(tokens: Tensor): Tensor =
     require(
       tokens.rank == 2,
       s"forward expects a rank-2 tensor of token indices [batchSize, seqLen], but got rank ${tokens.rank} instead."
@@ -47,5 +47,5 @@ final class Embedding(
 
     tokenTable.indexSelect(flatIdx).reshape(shape) +
       positionTable.indexSelect(Array.range(0, seqLen))
-  }
-}
+  end forward
+end Embedding

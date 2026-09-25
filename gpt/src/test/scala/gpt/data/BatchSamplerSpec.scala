@@ -5,15 +5,14 @@ import scala.util.Random
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class BatchSamplerSpec extends AnyFlatSpec with Matchers {
+class BatchSamplerSpec extends AnyFlatSpec with Matchers:
 
   // Devolve, em ordem, os valores dados a cada chamada de nextInt -- permite
   // controlar exatamente quais `start` o BatchSampler vai sortear, sem
   // depender do algoritmo interno do java.util.Random.
-  private class FixedRandom(values: Int*) extends Random {
+  private class FixedRandom(values: Int*) extends Random:
     private val it = values.iterator
     override def nextInt(n: Int): Int = it.next()
-  }
 
   private def row(t: Tensor, r: Int, len: Int): List[Double] =
     (0 until len).map(j => t.get(r, j)).toList
@@ -58,11 +57,10 @@ class BatchSamplerSpec extends AnyFlatSpec with Matchers {
 
     val (input, target) = sampler.sample(batchSize = 20)
 
-    for (r <- 0 until 20) {
+    for r <- 0 until 20 do
       // target[i] == input[i+1] para toda posicao i dentro da mesma janela
       // (mesma janela deslocada de 1, nao uma janela nova -- theory §4)
       row(target, r, contextLength - 1) shouldBe row(input, r, contextLength).drop(1)
-    }
   }
 
   it should "draw the only valid window when the corpus has exactly contextLength + 1 tokens" in {
@@ -72,10 +70,9 @@ class BatchSamplerSpec extends AnyFlatSpec with Matchers {
 
     val (input, target) = sampler.sample(batchSize = 10)
 
-    for (r <- 0 until 10) {
+    for r <- 0 until 10 do
       row(input, r, 4) shouldBe List(10.0, 20.0, 30.0, 40.0)
       row(target, r, 4) shouldBe List(20.0, 30.0, 40.0, 50.0)
-    }
   }
 
   it should "sample independent windows across the batch, not the same one repeated" in {
@@ -115,4 +112,4 @@ class BatchSamplerSpec extends AnyFlatSpec with Matchers {
 
     an[IllegalArgumentException] should be thrownBy BatchSampler.split(corpus, 16, 0.1)
   }
-}
+end BatchSamplerSpec
