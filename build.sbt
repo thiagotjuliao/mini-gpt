@@ -1,5 +1,9 @@
 ThisBuild / scalaVersion := "3.9.0"
 
+// Flags do compilador: a base comum a todos os projetos (project-templates).
+// Nomes e descricao de cada flag em project/CompilerFlags.scala.
+ThisBuild / scalacOptions ++= CompilerFlags.base
+
 lazy val root = rootProject
   .aggregate(scalagrad, gpt)
   .settings(

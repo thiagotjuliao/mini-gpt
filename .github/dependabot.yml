@@ -1,0 +1,9 @@
+# Keeps the versions of the GitHub Actions used in .github/workflows current,
+# one pull request per update. Library and build-tool versions are not
+# Dependabot's: Scala projects get Scala Steward for those.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
