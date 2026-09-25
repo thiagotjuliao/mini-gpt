@@ -20,7 +20,7 @@ final case class TrainingConfig(
     evalBatches: Int = 5,
     checkpointInterval: Int = 0,
     checkpointFile: Option[File] = None
-) {
+):
   require(steps >= 1, s"steps must be at least 1, but got $steps.")
   require(batchSize >= 1, s"batchSize must be at least 1, but got $batchSize.")
   require(evalBatches >= 1, s"evalBatches must be at least 1, but got $evalBatches.")
@@ -34,7 +34,7 @@ final case class TrainingConfig(
 
   require(lrMax >= lrMin, s"lrMax ($lrMax) cannot be smaller than lrMin ($lrMin).")
   require(maxGradNorm > 0, s"maxGradNorm must be positive, but got $maxGradNorm.")
-}
+end TrainingConfig
 
 final case class TrainingStep(
     step: Int,
@@ -42,15 +42,13 @@ final case class TrainingStep(
     gradientNorm: Double,
     loss: Double,
     validationLoss: Option[Double]
-) {
+):
   def perplexity: Double = Math.exp(loss)
-}
 
-final case class TrainingResult(optimizer: AdamW, history: List[TrainingStep]) {
+final case class TrainingResult(optimizer: AdamW, history: List[TrainingStep]):
   def losses: List[Double] = history.map(_.loss)
-}
 
-object Trainer {
+object Trainer:
 
   /** Perda média em `batches` lotes, sem construir grafo.
     *
@@ -75,7 +73,7 @@ object Trainer {
       config: TrainingConfig,
       validationSampler: Option[BatchSampler] = None,
       log: String => Unit = println
-  ): TrainingResult = {
+  ): TrainingResult =
     val initial = TrainingResult(optimizer, List.empty)
 
     val result = (1 to config.steps).foldLeft(initial) { (acc, step) =>
@@ -114,14 +112,13 @@ object Trainer {
     }
 
     result.copy(history = result.history.reverse)
-  }
+  end train
 
   private def shouldRun(step: Int, interval: Int): Boolean = interval > 0 && step % interval == 0
 
-  private def format(m: TrainingStep): String = {
+  private def format(m: TrainingStep): String =
     val base = f"step ${m.step}%5d | lr ${m.lr}%.3e | |grad| ${m.gradientNorm}%7.4f | " +
       f"loss ${m.loss}%7.4f | ppl ${m.perplexity}%8.2f"
 
     m.validationLoss.fold(base)(v => base + f" | val ${v}%7.4f")
-  }
-}
+end Trainer

@@ -7,7 +7,7 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class MLPSpec extends AnyFlatSpec with Matchers {
+class MLPSpec extends AnyFlatSpec with Matchers:
 
   // Dimensoes todas distintas entre si -- B, T, dModel, expansion e dFF. Com
   // dFF == dModel, trocar `W2` por `W2ᵀ` continuaria produzindo shapes
@@ -34,37 +34,35 @@ class MLPSpec extends AnyFlatSpec with Matchers {
       seqLen: Int,
       dModel: Int,
       requiresGradient: Boolean = false
-  ): Tensor = {
+  ): Tensor =
     val data = Array.fill(batchSize * seqLen * dModel)(rng.nextDouble() * 2 - 1)
     Tensor.make(data, Array(batchSize, seqLen, dModel), requiresGradient)
-  }
 
   // Pesos distintos entre si na perda: `sum` puro daria gradiente uniforme, e
   // uniforme esconde troca de posicao (theory/04-gradient-check §3).
-  private def lossWeights(shape: Array[Int]): Tensor = {
+  private def lossWeights(shape: Array[Int]): Tensor =
     val size = shape.product
     Tensor.make(Array.tabulate(size)(i => 0.3 + 0.7 * Math.sin(i * 1.7)), shape)
-  }
 
   // A definicao da GELU, escrita de novo aqui de proposito: a referencia so
   // vale como caminho independente se nao chamar o codigo sob teste.
-  private def gelu(x: Double): Double = {
+  private def gelu(x: Double): Double =
     val c = Math.sqrt(2 / Math.PI)
     0.5 * x * (1 + Math.tanh(c * (x + 0.044715 * Math.pow(x, 3))))
-  }
 
   /** Onde a ativacao entra: no meio (o certo), antes da primeira camada, ou
     * depois da segunda. As duas ultimas existem como contraprova -- as tres
     * produzem o mesmo formato, entao so o valor separa uma da outra.
     */
-  private enum GeluAt { case Middle, Start, End }
+  private enum GeluAt:
+    case Middle, Start, End
 
   /** `Linear -> GELU -> Linear` em Scala puro, sem tensores. */
   private def reference(
       mlp: MLP,
       x: Tensor,
       placement: GeluAt = GeluAt.Middle
-  ): Array[Array[Array[Double]]] = {
+  ): Array[Array[Array[Double]]] =
     val ps = mlp.parameters
     val (w1, b1, w2, b2) = (ps(upWeight), ps(upBias), ps(downWeight), ps(downBias))
     val hidden = w1.shape(1)
@@ -84,15 +82,13 @@ class MLPSpec extends AnyFlatSpec with Matchers {
       val y = (0 until hidden).map(i => activations(i) * w2.get(i, d)).sum + b2.get(d)
       if placement == GeluAt.End then gelu(y) else y
     }
-  }
 
   // A derivada da GELU, tambem reescrita a partir da formula (theory/05 §5).
-  private def geluPrime(x: Double): Double = {
+  private def geluPrime(x: Double): Double =
     val c = Math.sqrt(2 / Math.PI)
     val t = Math.tanh(c * (x + 0.044715 * Math.pow(x, 3)))
 
     0.5 * (1 + t) + 0.5 * x * (1 - t * t) * c * (1 + 0.134145 * x * x)
-  }
 
   private def scaled(t: Tensor, factor: Double): Tensor =
     Tensor.make(
@@ -111,7 +107,7 @@ class MLPSpec extends AnyFlatSpec with Matchers {
 
     y.shape.toArray shouldBe Array(batchSize, seqLen, dModel)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel)
+    for b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel do
       withClue(s"posicao (b=$b, t=$t, d=$d): ") {
         y.get(b, t, d) shouldBe expected(b)(t)(d) +- 1e-12
       }
@@ -122,11 +118,12 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     // nenhuma) e o expansion = 4 de producao.
     val cases = Seq((1, 1, 1, 1), (2, 1, 3, 4), (1, 6, 2, 1), (3, 5, 4, 2), (2, 3, 5, 4))
 
-    for ((b, t, d, e) <- cases) withClue(s"B=$b T=$t dModel=$d expansion=$e: ") {
-      val y = MLP(d, e, rng).forward(randomSequence(b, t, d))
+    for (b, t, d, e) <- cases do
+      withClue(s"B=$b T=$t dModel=$d expansion=$e: ") {
+        val y = MLP(d, e, rng).forward(randomSequence(b, t, d))
 
-      y.shape.toArray shouldBe Array(b, t, d)
-    }
+        y.shape.toArray shouldBe Array(b, t, d)
+      }
   }
 
   it should "accept a rank-2 input [T, dModel]" in {
@@ -161,7 +158,7 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     val fromView = mlp.forward(x)
     val fromCopy = mlp.forward(same)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel)
+    for b <- 0 until batchSize; t <- 0 until seqLen; d <- 0 until dModel do
       withClue(s"posicao (b=$b, t=$t, d=$d): ") {
         fromView.get(b, t, d) shouldBe fromCopy.get(b, t, d) +- 1e-12
       }
@@ -182,9 +179,10 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     val y = mlp.forward(x)
 
     // igualdade exata, sem tolerancia: e a mesma conta, com os mesmos bits
-    for (d <- 0 until dModel) withClue(s"coordenada $d: ") {
-      y.get(0, 3, d) shouldBe y.get(0, 0, d)
-    }
+    for d <- 0 until dModel do
+      withClue(s"coordenada $d: ") {
+        y.get(0, 3, d) shouldBe y.get(0, 0, d)
+      }
   }
 
   it should "commute with a permutation of the positions" in {
@@ -200,7 +198,7 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     val y = mlp.forward(x)
     val yPermuted = mlp.forward(permuted)
 
-    for (t <- 0 until seqLen; d <- 0 until dModel)
+    for t <- 0 until seqLen; d <- 0 until dModel do
       withClue(s"posicao (t=$t, d=$d): ") {
         yPermuted.get(0, t, d) shouldBe y.get(0, permutation(t), d)
       }
@@ -224,8 +222,8 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     val f2x = mlp.forward(scaled(x, 2.0))
     val f0 = mlp.forward(zeros)
 
-    val gaps = for (t <- 0 until seqLen; d <- 0 until dModel)
-      yield Math.abs(f2x.get(0, t, d) - 2 * fx.get(0, t, d) + f0.get(0, t, d))
+    val gaps = for t <- 0 until seqLen; d <- 0 until dModel
+    yield Math.abs(f2x.get(0, t, d) - 2 * fx.get(0, t, d) + f0.get(0, t, d))
 
     gaps.max should be > 1e-3
   }
@@ -235,14 +233,15 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     val x = randomSequence(1, seqLen, dModel)
     val y = mlp.forward(x)
 
-    for (wrong <- Seq(GeluAt.Start, GeluAt.End)) withClue(s"gelu em $wrong: ") {
-      val expected = reference(mlp, x, wrong)
+    for wrong <- Seq(GeluAt.Start, GeluAt.End) do
+      withClue(s"gelu em $wrong: ") {
+        val expected = reference(mlp, x, wrong)
 
-      val differences = for (t <- 0 until seqLen; d <- 0 until dModel)
+        val differences = for t <- 0 until seqLen; d <- 0 until dModel
         yield Math.abs(y.get(0, t, d) - expected(0)(t)(d))
 
-      differences.max should be > 1e-3
-    }
+        differences.max should be > 1e-3
+      }
   }
 
   it should "add b1 before the GELU, not after it" in {
@@ -266,21 +265,21 @@ class MLPSpec extends AnyFlatSpec with Matchers {
 
     // dW1 e dW2 somam sobre B e T, e db1 tambem -- uma unica soma por neuronio
     val expected = (0 until dFF).map { i =>
-      val perPosition = for (b <- 0 until batchSize; t <- 0 until seqLen) yield {
+      val perPosition = for b <- 0 until batchSize; t <- 0 until seqLen yield
         val z = (0 until dModel).map(k => x.get(b, t, k) * w1.get(k, i)).sum + b1.get(i)
         val dA = (0 until dModel).map(d => w.get(b, t, d) * w2.get(i, d)).sum
 
         dA * geluPrime(z)
-      }
 
       perPosition.sum
     }
 
     val actual = b1.gradient.toArray
 
-    for (i <- 0 until dFF) withClue(s"db1($i): ") {
-      actual(i) shouldBe expected(i) +- 1e-9
-    }
+    for i <- 0 until dFF do
+      withClue(s"db1($i): ") {
+        actual(i) shouldBe expected(i) +- 1e-9
+      }
   }
 
   // ---- parametros ----
@@ -300,9 +299,10 @@ class MLPSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "total 8·dModel² + 5·dModel with the default expansion" in {
-    for (d <- Seq(1, 4, 16, 64)) withClue(s"dModel=$d: ") {
-      MLP(d, rng = rng).parameters.map(_.size).sum shouldBe 8 * d * d + 5 * d
-    }
+    for d <- Seq(1, 4, 16, 64) do
+      withClue(s"dModel=$d: ") {
+        MLP(d, rng = rng).parameters.map(_.size).sum shouldBe 8 * d * d + 5 * d
+      }
   }
 
   it should "not share a tensor between the two layers" in {
@@ -329,14 +329,13 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     // gradiente somado do anterior.
     val w = lossWeights(Array(batchSize, seqLen, dModel))
 
-    for (i <- 0 until 4) {
+    for i <- 0 until 4 do
       val mlp = MLP(dModel, expansion, rng)
       val x = randomSequence(batchSize, seqLen, dModel)
 
       withClue(s"parametro $i: ") {
         Gradcheck.run(mlp.parameters(i))(_ => (mlp.forward(x) * w).sum) should be < 1e-5
       }
-    }
   }
 
   it should "pass gradient check with a non-contiguous input" in {
@@ -376,11 +375,10 @@ class MLPSpec extends AnyFlatSpec with Matchers {
     error.getMessage should include((dModel + 1).toString)
   }
 
-  private def desvioPadrao(t: scalagrad.core.Tensor): Double = {
+  private def desvioPadrao(t: scalagrad.core.Tensor): Double =
     val v = t.toArray
     val media = v.sum / v.length
     Math.sqrt(v.map(x => (x - media) * (x - media)).sum / v.length)
-  }
 
   "the residual scale" should "shrink the second Linear and leave the first alone" in {
     // parameters = [W_up, b_up, W_down, b_down]
@@ -400,4 +398,4 @@ class MLPSpec extends AnyFlatSpec with Matchers {
 
     desvioPadrao(camada.parameters(2)) shouldBe esperado +- (esperado * 0.1)
   }
-}
+end MLPSpec

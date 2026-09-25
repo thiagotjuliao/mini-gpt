@@ -6,7 +6,7 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class CrossEntropySpec extends AnyFlatSpec with Matchers {
+class CrossEntropySpec extends AnyFlatSpec with Matchers:
 
   // T = 2 e V = 4 sao distintos de proposito: com T == V, o `logSoftmax` no
   // eixo das posicoes em vez do vocabulario produz numeros plausiveis e
@@ -19,10 +19,7 @@ class CrossEntropySpec extends AnyFlatSpec with Matchers {
     * 2.36971, 1.38629, 0.13993, 1.45693 -- media 1.33821.
     */
   private val loteValores = Array(
-    2.0, 1.0, 0.1, -0.5,
-    0.3, 0.3, 0.3, 0.3,
-    -1.0, 3.0, 0.0, 0.5,
-    1.5, -2.0, 0.7, 0.7
+    2.0, 1.0, 0.1, -0.5, 0.3, 0.3, 0.3, 0.3, -1.0, 3.0, 0.0, 0.5, 1.5, -2.0, 0.7, 0.7
   )
 
   private val loteLogits =
@@ -41,11 +38,10 @@ class CrossEntropySpec extends AnyFlatSpec with Matchers {
 
   private def alvo(index: Int): Tensor = Tensor.make(Array(index.toDouble), Array(1, 1))
 
-  private def softmax(values: Seq[Double]): Seq[Double] = {
+  private def softmax(values: Seq[Double]): Seq[Double] =
     val m = values.max
     val e = values.map(v => Math.exp(v - m))
     e.map(_ / e.sum)
-  }
 
   // ---- valores conhecidos ----
 
@@ -64,11 +60,12 @@ class CrossEntropySpec extends AnyFlatSpec with Matchers {
 
   it should "give exactly log(V) when every logit is equal" in {
     // a checagem de sanidade do §6: um modelo que nao sabe nada paga log(V)
-    for (v <- Seq(4, 65, 256)) withClue(s"V=$v: ") {
-      val uniformes = Tensor.make(Array.fill(v)(0.0), Array(1, 1, v))
+    for v <- Seq(4, 65, 256) do
+      withClue(s"V=$v: ") {
+        val uniformes = Tensor.make(Array.fill(v)(0.0), Array(1, 1, v))
 
-      CrossEntropy(uniformes, alvo(v / 2)).get(0) shouldBe Math.log(v) +- 1e-9
-    }
+        CrossEntropy(uniformes, alvo(v / 2)).get(0) shouldBe Math.log(v) +- 1e-9
+      }
   }
 
   it should "not depend on which target is chosen, when the logits are uniform" in {
@@ -112,17 +109,17 @@ class CrossEntropySpec extends AnyFlatSpec with Matchers {
 
     val gradiente = z.gradient.toArray
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen) {
+    for b <- 0 until batchSize; t <- 0 until seqLen do
       val posicao = (0 until vocabSize).map(v => loteLogits.get(b, t, v))
       val p = softmax(posicao)
       val alvoIdx = loteAlvos.get(b, t).toInt
 
-      for (v <- 0 until vocabSize) withClue(s"posicao (b=$b, t=$t, v=$v): ") {
-        val esperado = (p(v) - (if v == alvoIdx then 1.0 else 0.0)) / n
+      for v <- 0 until vocabSize do
+        withClue(s"posicao (b=$b, t=$t, v=$v): ") {
+          val esperado = (p(v) - (if v == alvoIdx then 1.0 else 0.0)) / n
 
-        gradiente(b * seqLen * vocabSize + t * vocabSize + v) shouldBe esperado +- 1e-12
-      }
-    }
+          gradiente(b * seqLen * vocabSize + t * vocabSize + v) shouldBe esperado +- 1e-12
+        }
   }
 
   it should "have gradients that sum to zero within each position" in {
@@ -134,11 +131,13 @@ class CrossEntropySpec extends AnyFlatSpec with Matchers {
 
     val gradiente = z.gradient.toArray
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen) withClue(s"posicao (b=$b, t=$t): ") {
-      val soma = (0 until vocabSize).map(v => gradiente(b * seqLen * vocabSize + t * vocabSize + v)).sum
+    for b <- 0 until batchSize; t <- 0 until seqLen do
+      withClue(s"posicao (b=$b, t=$t): ") {
+        val soma =
+          (0 until vocabSize).map(v => gradiente(b * seqLen * vocabSize + t * vocabSize + v)).sum
 
-      soma shouldBe 0.0 +- 1e-15
-    }
+        soma shouldBe 0.0 +- 1e-15
+      }
   }
 
   it should "pass gradient check on the logits" in {
@@ -190,4 +189,4 @@ class CrossEntropySpec extends AnyFlatSpec with Matchers {
 
     an[IllegalArgumentException] should be thrownBy CrossEntropy(loteLogits, fracionario)
   }
-}
+end CrossEntropySpec

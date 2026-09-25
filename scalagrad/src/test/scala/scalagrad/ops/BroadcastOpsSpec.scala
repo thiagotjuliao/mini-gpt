@@ -5,13 +5,12 @@ import scalagrad.ops.Broadcast.unbroadcast
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class BroadcastOpsSpec extends AnyFlatSpec with Matchers {
+class BroadcastOpsSpec extends AnyFlatSpec with Matchers:
 
-  private def onesGradient(n: Int): Gradient = {
+  private def onesGradient(n: Int): Gradient =
     val g = Gradient.zeros(n)
     (0 until n).foreach(i => g.accumulate(i, 1.0))
     g
-  }
 
   "unbroadcast" should "sum a broadcasted dimension away entirely when it did not exist in the original shape" in {
     // M(3,4) + v(4,): v foi broadcastado ao longo da dimensão nova (linhas).
@@ -50,4 +49,4 @@ class BroadcastOpsSpec extends AnyFlatSpec with Matchers {
 
     result.toList shouldBe List(6.0)
   }
-}
+end BroadcastOpsSpec

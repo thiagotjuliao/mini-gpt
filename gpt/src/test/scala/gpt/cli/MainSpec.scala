@@ -4,7 +4,7 @@ import gpt.generate.{Greedy, Temperature, TopK}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class MainSpec extends AnyFlatSpec with Matchers {
+class MainSpec extends AnyFlatSpec with Matchers:
 
   "the argument parser" should "fall back to the default when the flag is absent" in {
     intArg(Seq("--steps", "10"), "--batch", 8) shouldBe 8
@@ -84,4 +84,4 @@ class MainSpec extends AnyFlatSpec with Matchers {
 
     applyCommand(":temp 0.5", withHistory).history shouldBe Vector(4, 5)
   }
-}
+end MainSpec

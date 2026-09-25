@@ -2,7 +2,7 @@ package scalagrad.ops
 
 import scalagrad.core.*
 
-private[ops] trait SoftmaxOps {
+private[ops] trait SoftmaxOps:
 
   /** Duas passadas do truque log-sum-exp (theory/06-softmax/06-softmax.md
     * §1/§5), compartilhadas por `softmax` e `logSoftmax`: acha o máximo de
@@ -11,7 +11,7 @@ private[ops] trait SoftmaxOps {
     * posição) é usado como numerador por `softmax`; `logSoftmax` só precisa
     * de `maxes`/`sums` (via log-sum-exp), ignorando `expData`.
     */
-  private def logSumExpStats(t: Tensor, dim: Int): (Array[Double], Array[Double], Array[Double]) = {
+  private def logSumExpStats(t: Tensor, dim: Int): (Array[Double], Array[Double], Array[Double]) =
     val sliceSize = t.size / t.shape(dim)
     val maxes = Array.fill(sliceSize)(Double.NegativeInfinity)
     val sums = Array.fill(sliceSize)(0.0)
@@ -33,10 +33,9 @@ private[ops] trait SoftmaxOps {
     }
 
     (maxes, sums, expData)
-  }
 
-  extension (t: Tensor) {
-    def softmax(dim: Int): Tensor = {
+  extension (t: Tensor)
+    def softmax(dim: Int): Tensor =
       val grad = Gradient.zeros(t.shape)
       val reqGrad = t.requiresGradient && Tensor.gradEnabled
       val prev = if Tensor.gradEnabled then Set(t) else Set()
@@ -63,9 +62,9 @@ private[ops] trait SoftmaxOps {
             t.gradient.accumulate(i, dx)
           }
       }
-    }
+    end softmax
 
-    def logSoftmax(dim: Int): Tensor = {
+    def logSoftmax(dim: Int): Tensor =
       val grad = Gradient.zeros(t.shape)
       val reqGrad = t.requiresGradient && Tensor.gradEnabled
       val prev = if Tensor.gradEnabled then Set(t) else Set()
@@ -95,6 +94,6 @@ private[ops] trait SoftmaxOps {
             t.gradient.accumulate(i, dx)
           }
       }
-    }
-  }
-}
+    end logSoftmax
+  end extension
+end SoftmaxOps

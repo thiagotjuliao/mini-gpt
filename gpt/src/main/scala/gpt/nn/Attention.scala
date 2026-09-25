@@ -3,14 +3,14 @@ package gpt.nn
 import scalagrad.core.Tensor
 import scalagrad.ops.tensor.*
 
-final class Attention(dModel: Int, dHead: Int) {
+final class Attention(dModel: Int, dHead: Int):
   private val query = Linear(dModel, dHead)
   private val key = Linear(dModel, dHead, useBias = false)
   private val value = Linear(dModel, dHead)
   private val scale = Tensor.fill(Array(1), Math.sqrt(dHead))
   val parameters: List[Tensor] = query.parameters ++ key.parameters ++ value.parameters
 
-  def forward(x: Tensor): Tensor = {
+  def forward(x: Tensor): Tensor =
     require(
       x.rank == 3,
       s"The input tensor for this layer must have 3 dimensions (B, T, dModel), but got rank ${x.rank}."
@@ -33,5 +33,4 @@ final class Attention(dModel: Int, dHead: Int) {
     val mask = Masks.causalMask(seqLen)
     val weights = (scores + mask).softmax(scores.rank - 1)
     weights.matmul(v)
-  }
-}
+end Attention

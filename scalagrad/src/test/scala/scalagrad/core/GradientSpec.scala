@@ -3,7 +3,7 @@ package scalagrad.core
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class GradientSpec extends AnyFlatSpec with Matchers {
+class GradientSpec extends AnyFlatSpec with Matchers:
 
   "Gradient.zeros" should "create a gradient with every position at 0.0" in {
     val g = Gradient.zeros(3)
@@ -89,4 +89,4 @@ class GradientSpec extends AnyFlatSpec with Matchers {
 
     g.toList shouldBe List(0.0, 0.0)
   }
-}
+end GradientSpec

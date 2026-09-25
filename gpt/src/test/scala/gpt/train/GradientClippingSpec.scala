@@ -4,13 +4,12 @@ import scalagrad.core.Tensor
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class GradientClippingSpec extends AnyFlatSpec with Matchers {
+class GradientClippingSpec extends AnyFlatSpec with Matchers:
 
-  private def parametro(gradiente: Double*): Tensor = {
+  private def parametro(gradiente: Double*): Tensor =
     val t = Tensor.make(Array.fill(gradiente.length)(0.0), Array(gradiente.length), true)
     gradiente.indices.foreach(i => t.gradient.accumulate(i, gradiente(i)))
     t
-  }
 
   "globalNorm" should "span every parameter, not one at a time" in {
     val a = parametro(3.0, -4.0)
@@ -80,4 +79,4 @@ class GradientClippingSpec extends AnyFlatSpec with Matchers {
 
     p.gradient.toArray shouldBe Array(1.0, -3.0)
   }
-}
+end GradientClippingSpec

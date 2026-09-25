@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import java.io.File
 import scala.util.Random
 
-class TrainerSpec extends AnyFlatSpec with Matchers {
+class TrainerSpec extends AnyFlatSpec with Matchers:
 
   private val vocabSize = 3
   private val contextLength = 8
@@ -216,4 +216,4 @@ class TrainerSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy
       TrainingConfig(steps = 10, batchSize = 4, maxGradNorm = 0.0)
   }
-}
+end TrainerSpec

@@ -10,7 +10,7 @@ final class Linear(
     useBias: Boolean = true,
     initScale: Double = 1.0,
     rng: Random = Random()
-) {
+):
   // Dimensao nao positiva produz tensores vazios sem estourar nada: o forward
   // roda, devolve zero elemento, e o erro so aparece muito depois, longe da
   // causa. A checagem mora aqui, uma vez, e nao em cada camada que usa
@@ -32,24 +32,21 @@ final class Linear(
   val bias: Option[Tensor] = b
   val parameters: List[Tensor] = W :: b.toList
 
-  private def initializeBias(): Tensor = {
+  private def initializeBias(): Tensor =
     val data = Array.fill(outputDim)(0.0)
     val shape = Array(outputDim)
 
     Tensor.make(data, shape, requiresGradient = true)
-  }
 
-  private def initializeWeights(): Tensor = {
+  private def initializeWeights(): Tensor =
     // `initScale` e a escala residual da Etapa 15 §6: as duas projecoes que
     // escrevem no fluxo residual nascem menores por 1/sqrt(2*nLayers).
     val std = Math.sqrt(2.0 / inputDim) * initScale
     val shape = Array(inputDim, outputDim)
 
     Tensor.randn(shape, std, requiresGradient = true, rng = rng)
-  }
 
-  def forward(x: Tensor): Tensor = {
+  def forward(x: Tensor): Tensor =
     val z = x.matmul(W)
     b.fold(z)(z + _)
-  }
-}
+end Linear

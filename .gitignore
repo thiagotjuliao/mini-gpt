@@ -1,52 +1,61 @@
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### Metals ###
-.bloop/
-.metals/
-
-### IntelliJ IDEA ###
+# --- IDE ---
 .idea/
-*.iws
 *.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+# `.vscode/` is mostly per-user state, but `settings.json` and
+# `extensions.json` are an environment contract — the editor configuration the
+# repository's conventions assume. They travel with the repository; everything
+# else in the directory (launch.json with absolute paths, in particular) does
+# not.
+#
+# The pattern must be `.vscode/*`, not `.vscode/`: git does not descend into an
+# excluded directory, so a trailing-slash exclusion makes the negations below
+# unreachable.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# --- Secrets ---
+# `.env.example` documents the variables; `.env` holds the values.
+.env
+!.env.example
 
-### VS Code ###
-.vscode/
-
-### Mac OS ###
+# --- OS noise ---
 .DS_Store
+Thumbs.db
 
-### Scala ###
+# --- sbt / Scala build output ---
+target/
+project/target/
+project/project/
+.bloop/
 .bsp/
+.metals/
+metals.sbt
+*.class
+
+# --- Metals worksheets ---
+# Scratch by default. A project that keeps some adds a negation below, e.g.
+# `!modules/playground/**/*.worksheet.sc`.
+*.worksheet.sc
+
+# --- JVM crash / profiling artifacts ---
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+*.jfr
+
+# --- Misplaced tool output ---
+
+# Coursier builds its Windows cache path from %LOCALAPPDATA%. A process that
+# cannot see that variable resolves it to the literal string "null" and writes
+# the cache to ./null in the working directory — tens of megabytes of jars,
+# untracked, one careless `git add .` away from the history.
+null/
+
+# ==============================================================================
+# This project — additions to the template (project-templates/scala-sbt)
+# ==============================================================================
 
 # checkpoint gerado pelo treino
 gpt/data/model.bin
-

@@ -5,20 +5,19 @@ import scalagrad.ops.tensor.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class GradcheckSpec extends AnyFlatSpec with Matchers {
+class GradcheckSpec extends AnyFlatSpec with Matchers:
 
   // Op deliberadamente quebrada (backward errado: ignora o valor de entrada,
   // devolve o upstream sem multiplicar por `2x`) -- usada só pra confirmar que
   // o Gradcheck de fato denuncia um backward incorreto, e nao so "carimba"
   // qualquer coisa como correta.
-  private def brokenSquare(t: Tensor): Tensor = {
+  private def brokenSquare(t: Tensor): Tensor =
     val data = Array(t.data(0) * t.data(0))
     val grad = Gradient.zeros(1)
 
     Tensor(data, Shape(1), Strides(1), grad, true, Set(t)) { () =>
       t.gradient.accumulate(0, grad(0)) // bug: deveria ser 2 * t.data(0) * grad(0)
     }
-  }
 
   "Gradcheck.run" should "report a near-zero error for a correct backward (sum of squares)" in {
     // mesmo exemplo de theory/04-gradient-check/04-gradient-check.md §3
@@ -90,4 +89,4 @@ class GradcheckSpec extends AnyFlatSpec with Matchers {
 
     segunda shouldBe primeira +- 1e-12
   }
-}
+end GradcheckSpec

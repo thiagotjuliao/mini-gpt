@@ -3,7 +3,7 @@ package gpt.train
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class LRScheduleSpec extends AnyFlatSpec with Matchers {
+class LRScheduleSpec extends AnyFlatSpec with Matchers:
 
   private val lrMax = 3e-4
   private val lrMin = 3e-5
@@ -68,4 +68,4 @@ class LRScheduleSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy
       LRSchedule.cosine(1, total, lrMax = 1e-5, lrMin = 1e-4)
   }
-}
+end LRScheduleSpec

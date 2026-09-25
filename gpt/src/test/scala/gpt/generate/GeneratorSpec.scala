@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.util.Random
 
-class GeneratorSpec extends AnyFlatSpec with Matchers {
+class GeneratorSpec extends AnyFlatSpec with Matchers:
 
   private val vocabSize = 3
   private val contextLength = 8
@@ -148,4 +148,4 @@ class GeneratorSpec extends AnyFlatSpec with Matchers {
 
     saida shouldBe esperado
   }
-}
+end GeneratorSpec

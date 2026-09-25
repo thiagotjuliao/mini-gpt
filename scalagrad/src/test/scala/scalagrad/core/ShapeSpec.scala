@@ -3,7 +3,7 @@ package scalagrad.core
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class ShapeSpec extends AnyFlatSpec with Matchers {
+class ShapeSpec extends AnyFlatSpec with Matchers:
 
   "Shape" should "expose size, rank and per-dimension access via apply" in {
     val s = Shape(2, 3, 4)
@@ -71,10 +71,9 @@ class ShapeSpec extends AnyFlatSpec with Matchers {
   "unravelIndex" should "be the inverse of index for every linear position" in {
     val s = Shape(2, 3, 4)
 
-    for (n <- 0 until s.size) {
+    for n <- 0 until s.size do
       val multiIdx = s.unravelIndex(n)
       s.index(multiIdx*) shouldBe n
-    }
   }
 
   "index" should "compute the correct linear index for a 2D row-major shape" in {
@@ -131,21 +130,19 @@ class ShapeSpec extends AnyFlatSpec with Matchers {
   it should "agree with indexing crop(dim) directly" in {
     val s = Shape(2, 3, 4)
 
-    for (n <- 0 until s.size) {
+    for n <- 0 until s.size do
       val multiIdx = s.unravelIndex(n)
       val collapsed = multiIdx.take(1) ++ multiIdx.drop(2) // drop dim=1
       s.groupIndex(multiIdx, dim = 1) shouldBe s.crop(1).index(collapsed*)
-    }
   }
 
   it should "agree with indexing the dim-zeroed, rank-preserving shape (keepDim=true equivalent)" in {
     val s = Shape(2, 3, 4)
     val keepDimShape = s.updated(1, 1)
 
-    for (n <- 0 until s.size) {
+    for n <- 0 until s.size do
       val multiIdx = s.unravelIndex(n)
       s.groupIndex(multiIdx, dim = 1) shouldBe keepDimShape.index(multiIdx.updated(1, 0)*)
-    }
   }
 
   "Shape.broadcast" should "align shapes of the same rank, taking the max per dimension" in {
@@ -160,4 +157,4 @@ class ShapeSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy Shape.broadcast(Shape(3), Shape(4))
     an[IllegalArgumentException] should be thrownBy Shape.broadcast(Shape(2, 3), Shape(4, 3))
   }
-}
+end ShapeSpec

@@ -1,0 +1,11 @@
+# Everything is LF in the repository, whatever the checkout platform does.
+* text=auto eol=lf
+*.md text eol=lf
+
+# Scripts come in pairs: bash for macOS, Linux and Git Bash, PowerShell for
+# Windows. PowerShell 5 misreads LF-only files in some cases; CRLF is safe for
+# both 5 and 7.
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.sbt text eol=lf
+*.scala text eol=lf

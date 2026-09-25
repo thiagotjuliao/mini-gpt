@@ -3,7 +3,7 @@ package scalagrad.core
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class TensorSpec extends AnyFlatSpec with Matchers {
+class TensorSpec extends AnyFlatSpec with Matchers:
 
   "A Tensor" should "compute rank and size from its shape" in {
     val t = Tensor.make(Array.fill(24)(0.0), Array(2, 3, 4))
@@ -47,10 +47,9 @@ class TensorSpec extends AnyFlatSpec with Matchers {
   "unravelIndex" should "be the inverse of index for every linear position" in {
     val shape = Array(2, 3, 4)
     val t = Tensor.make(Array.fill(shape.product)(0.0), shape)
-    for (n <- 0 until t.size) {
+    for n <- 0 until t.size do
       val multiIdx = t.unravelIndex(n)
       t.index(multiIdx*) shouldBe n
-    }
   }
 
   it should "reject an index outside the valid range" in {
@@ -275,18 +274,20 @@ class TensorSpec extends AnyFlatSpec with Matchers {
       List(0.0, 0.0, 0.0, 1.0)
     )
 
-    for (i <- 0 until 3; j <- 0 until 4) withClue(s"posicao ($i, $j): ") {
-      out.get(i, j) shouldBe esperado(i)(j)
-    }
+    for i <- 0 until 3; j <- 0 until 4 do
+      withClue(s"posicao ($i, $j): ") {
+        out.get(i, j) shouldBe esperado(i)(j)
+      }
   }
 
   it should "give every row exactly one 1.0, whatever the indices" in {
     val out = Tensor.oneHot(Array(0, 0, 4, 1, 4), numClasses = 5)
 
-    for (i <- 0 until 5) withClue(s"linha $i: ") {
-      (0 until 5).map(j => out.get(i, j)).sum shouldBe 1.0
-      (0 until 5).count(j => out.get(i, j) == 1.0) shouldBe 1
-    }
+    for i <- 0 until 5 do
+      withClue(s"linha $i: ") {
+        (0 until 5).map(j => out.get(i, j)).sum shouldBe 1.0
+        (0 until 5).count(j => out.get(i, j) == 1.0) shouldBe 1
+      }
   }
 
   it should "repeat a row when its index repeats" in {
@@ -381,4 +382,4 @@ class TensorSpec extends AnyFlatSpec with Matchers {
     t.get(0, 0) shouldBe 7.0
     t.get(2, 1) shouldBe 12.0
   }
-}
+end TensorSpec

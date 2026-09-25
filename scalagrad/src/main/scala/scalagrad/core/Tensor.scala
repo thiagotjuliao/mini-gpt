@@ -12,7 +12,7 @@ final class Tensor private[scalagrad] (
     val gradient: Gradient,
     val requiresGradient: Boolean = false,
     private[core] val previous: Set[Tensor] = Set()
-)(private[core] val backwardStep: () => Unit = () => ()) {
+)(private[core] val backwardStep: () => Unit = () => ()):
   private val maxReachableIndex: Int =
     shape.indices.foldLeft(0)((acc, i) => acc + (shape(i) - 1) * strides(i))
 
@@ -40,7 +40,7 @@ final class Tensor private[scalagrad] (
 
   def unravelIndex(idx: Int): Array[Int] = shape.unravelIndex(idx)
 
-  def reshape(newShape: Array[Int]): Tensor = {
+  def reshape(newShape: Array[Int]): Tensor =
     require(
       newShape.product == size,
       "New shape must be of the same size as the current shape."
@@ -58,11 +58,10 @@ final class Tensor private[scalagrad] (
           gradient.accumulate(i, grad(i))
         }
     }
-  }
 
   def reshape(newShape: Shape): Tensor = reshape(newShape.toArray)
 
-  def transpose(dim0: Int = rank - 2, dim1: Int = rank - 1): Tensor = {
+  def transpose(dim0: Int = rank - 2, dim1: Int = rank - 1): Tensor =
     require(
       shape.isDefinedAt(dim0) && shape.isDefinedAt(dim1),
       s"Provided dimensions must be between 0 and ${rank - 1}."
@@ -86,9 +85,8 @@ final class Tensor private[scalagrad] (
           gradient.accumulate(shape.index(inIdx*), grad(i))
         }
     }
-  }
 
-  def contiguous: Tensor = {
+  def contiguous: Tensor =
     if isContiguous then this
     else
       // `mapping` traduz índice canônico -> posição física, e só vale pra
@@ -109,20 +107,17 @@ final class Tensor private[scalagrad] (
       )(
         backwardStep
       )
-  }
 
-  def backward(): Unit = {
+  def backward(): Unit =
     require(size == 1, "`backward` should be called on a Scalar root, like Loss.")
 
     gradient.seed()
     val nodes = Tensor.topologicalSort(this).reverse
     nodes.foreach(_.backwardStep())
-  }
 
-  def zeroGrad(): Unit = {
+  def zeroGrad(): Unit =
     val nodes = Tensor.topologicalSort(this)
     nodes.filter(_.requiresGradient).foreach(_.gradient.zero())
-  }
 
   /** View broadcastada de `this` para `newShape`: mesmo `data` (sem copiar),
     * com dimensões de tamanho 1 "esticadas" via stride 0. `newShape` deve ser
@@ -135,7 +130,7 @@ final class Tensor private[scalagrad] (
     * anunciado. Acumular nela por índice canônico do shape novo corrompe ou
     * estoura -- foi o motivo de esta rota ser descartada no `matmul` da Etapa 11.
     */
-  private[scalagrad] def broadcastTo(newShape: Shape): Tensor = {
+  private[scalagrad] def broadcastTo(newShape: Shape): Tensor =
     val shapeB = Shape.broadcast(shape, newShape)
     val paddedShape = shape.padTo(shapeB.rank, 1)
     val paddedStrides = strides.padTo(shapeB.rank, 0)
@@ -150,9 +145,8 @@ final class Tensor private[scalagrad] (
     )
 
     Tensor(data, finalShape, finalStrides, gradient, requiresGradient, previous)(backwardStep)
-  }
 
-  def updateData(values: Array[Double]): Unit = {
+  def updateData(values: Array[Double]): Unit =
     require(
       values.length == size,
       s"The input values array size must be equal to $size, but got ${values.length}."
@@ -166,15 +160,13 @@ final class Tensor private[scalagrad] (
     values.indices.foreach { i =>
       data(i) = values(i)
     }
-  }
 
-  def toArray: Array[Double] = {
+  def toArray: Array[Double] =
     if isContiguous then data.clone()
     else this.contiguous.toArray
-  }
 
-  override def toString: String = {
-    def fmt(dim: Int, prefix: Array[Int]): String = {
+  override def toString: String =
+    def fmt(dim: Int, prefix: Array[Int]): String =
       val cells = Tensor.truncatedRange(shape(dim))
 
       if dim == rank - 1 then
@@ -192,13 +184,11 @@ final class Tensor private[scalagrad] (
             case None => "..."
           }
           .mkString(s"[\n$indent", s",\n$indent", s"\n${"  " * dim}]")
-    }
 
     s"Tensor(shape=${shape.mkString("x")})\n${fmt(0, Array.empty)}"
-  }
-}
+end Tensor
 
-object Tensor {
+object Tensor:
   private val edgeItems = 3
   private val summarizeThreshold = 2 * edgeItems + 1
 
@@ -212,14 +202,14 @@ object Tensor {
   private[scalagrad] def gradEnabled: Boolean = gradEnabledVar.value
 
   private def truncatedRange(n: Int): Seq[Option[Int]] =
-    if (n <= summarizeThreshold) (0 until n).map(Some(_))
+    if n <= summarizeThreshold then (0 until n).map(Some(_))
     else (0 until edgeItems).map(Some(_)) ++ Seq(None) ++ (n - edgeItems until n).map(Some(_))
 
   /** Box-Muller: transforma pares de amostras uniformes em pares de amostras
     * N(0,1). Derivação (coordenadas polares, por que R²/θ têm essas
     * distribuições): ver theory/01-tensor/01-tensor.md §4.
     */
-  private def getGaussianSamples(rng: Random): LazyList[Double] = {
+  private def getGaussianSamples(rng: Random): LazyList[Double] =
     val u1 = 1.0 - rng.nextDouble()
     val u2 = rng.nextDouble()
 
@@ -230,21 +220,20 @@ object Tensor {
     val z2 = r * Math.sin(t)
 
     z1 #:: z2 #:: getGaussianSamples(rng)
-  }
 
   /** Ordem topológica reversa a partir de `root`, via DFS com pilha explícita
     * (stack-safe pra grafos profundos). Por que essa ordem é necessária pro
     * backward, e o caso do grafo diamante com nó compartilhado não-folha: ver
     * theory/02-autograd/02-autograd.md §4.
     */
-  private def topologicalSort(root: Tensor): List[Tensor] = {
+  private def topologicalSort(root: Tensor): List[Tensor] =
     @scala.annotation.tailrec
     def visit(
         tensors: List[Tensor],
         visited: Set[Tensor],
         added: Set[Tensor],
         sorted: Vector[Tensor]
-    ): List[Tensor] = {
+    ): List[Tensor] =
       if tensors.isEmpty then sorted.toList
       else
         val tensor = tensors.head
@@ -255,17 +244,14 @@ object Tensor {
             visit(tensors.tail, visited + tensor, added + tensor, sorted :+ tensor)
           else visit(tensors.tail, visited + tensor, added, sorted)
         else visit(parents ::: tensors, visited + tensor, added, sorted)
-    }
 
     visit(List(root), Set(), Set(), Vector())
-  }
 
-  def make(data: Array[Double], shape: Array[Int], requiresGradient: Boolean = false): Tensor = {
+  def make(data: Array[Double], shape: Array[Int], requiresGradient: Boolean = false): Tensor =
     val shapeT = Shape(shape)
     val grad = Gradient.zeros(shapeT)
 
     Tensor(data, shapeT, shapeT.canonicalStrides, grad, requiresGradient)()
-  }
 
   def zeros(shape: Array[Int], requiresGradient: Boolean = false): Tensor =
     fill(shape, 0.0, requiresGradient)
@@ -273,10 +259,9 @@ object Tensor {
   def ones(shape: Array[Int], requiresGradient: Boolean = false): Tensor =
     fill(shape, 1.0, requiresGradient)
 
-  def fill(shape: Array[Int], value: Double, requiresGradient: Boolean = false): Tensor = {
+  def fill(shape: Array[Int], value: Double, requiresGradient: Boolean = false): Tensor =
     val data = Array.fill(shape.product)(value)
     Tensor.make(data, shape, requiresGradient)
-  }
 
   /** `rng` injetável pelo mesmo motivo do `BatchSampler`: sem isso nenhuma
     * inicialização de modelo é reproduzível, e a partir da Etapa 18 "rodei de
@@ -287,19 +272,17 @@ object Tensor {
       std: Double = 1.0,
       requiresGradient: Boolean = false,
       rng: Random = Random
-  ): Tensor = {
+  ): Tensor =
     val data = getGaussianSamples(rng).take(shape.product).map(_ * std).toArray
     Tensor.make(data, shape, requiresGradient)
-  }
 
-  def arange(n: Int): Tensor = {
+  def arange(n: Int): Tensor =
     val data = Array.tabulate(n)(_.toDouble)
     Tensor.make(data, Array(n))
-  }
 
   def noGrad[T](block: => T): T = gradEnabledVar.withValue(false)(block)
 
-  def oneHot(indices: Array[Int], numClasses: Int): Tensor = {
+  def oneHot(indices: Array[Int], numClasses: Int): Tensor =
     require(
       numClasses >= 1,
       s"A one-hot row needs at least 1 class, but got $numClasses."
@@ -318,14 +301,12 @@ object Tensor {
     val shape = Array(indices.length, numClasses)
 
     val data = {
-      for {
+      for
         i <- 0 until indices.length
         j <- 0 until numClasses
-      } yield {
-        if j == indices(i) then 1.0 else 0.0
-      }
+      yield if j == indices(i) then 1.0 else 0.0
     }.toArray
 
     Tensor.make(data, shape)
-  }
-}
+  end oneHot
+end Tensor

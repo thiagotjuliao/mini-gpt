@@ -7,7 +7,7 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class AttentionSpec extends AnyFlatSpec with Matchers {
+class AttentionSpec extends AnyFlatSpec with Matchers:
 
   // Dimensoes deliberadamente todas diferentes entre si: shapes quadradas
   // escondem indices trocados (theory/03-elementary-operations Secao 6).
@@ -31,20 +31,18 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
       seqLen: Int,
       dModel: Int,
       requiresGradient: Boolean = false
-  ): Tensor = {
+  ): Tensor =
     val data = Array.fill(batchSize * seqLen * dModel)(Random.nextDouble() * 2 - 1)
     Tensor.make(data, Array(batchSize, seqLen, dModel), requiresGradient)
-  }
 
   /** Pesos distintos pra perda escalar do gradient check. Nunca usar `.sum`
     * puro sobre os pesos de atencao: `softmax(x).sum` e funcao constante e
     * aprova qualquer backward (theory/06-softmax Secao 5; o mesmo erro
     * reapareceu na Etapa 10).
     */
-  private def lossWeights(shape: Array[Int]): Tensor = {
+  private def lossWeights(shape: Array[Int]): Tensor =
     val size = shape.product
     Tensor.make(Array.tabulate(size)(i => 0.3 + 0.7 * Math.sin(i * 1.7)), shape)
-  }
 
   /** Projecao de uma camada `Linear` em Scala puro, lendo W e b de
     * `parameters`. Serve de base pra referencia independente do bloco todo.
@@ -54,7 +52,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
       x: Tensor,
       w: Tensor,
       b: Option[Tensor] = None
-  ): Array[Array[Array[Double]]] = {
+  ): Array[Array[Array[Double]]] =
     val bs = x.shape(0)
     val t = x.shape(1)
     val din = x.shape(2)
@@ -63,7 +61,6 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     Array.tabulate(bs, t, dout) { (i, j, o) =>
       (0 until din).map(k => x.get(i, j, k) * w.get(k, o)).sum + b.fold(0.0)(_.get(o))
     }
-  }
 
   /** Referencia do bloco inteiro em Scala puro -- nao usa nenhuma operacao de
     * `scalagrad`, so le os 5 parametros. Devolve (pesos de atencao, saida).
@@ -71,7 +68,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
   private def reference(
       att: Attention,
       x: Tensor
-  ): (Array[Array[Array[Double]]], Array[Array[Array[Double]]]) = {
+  ): (Array[Array[Array[Double]]], Array[Array[Array[Double]]]) =
     val ps = att.parameters
     val q = project(x, ps(qWeight), Some(ps(qBias)))
     val k = project(x, ps(kWeight))
@@ -88,22 +85,21 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     }
 
     // softmax por linha, com subtracao do maximo (log-sum-exp)
-    for (b <- 0 until bs; i <- 0 until t) {
+    for b <- 0 until bs; i <- 0 until t do
       val row = weights(b)(i)
       val max = row.max
       val exps = row.map(s => Math.exp(s - max))
       val total = exps.sum
-      for (j <- 0 until t) row(j) = exps(j) / total
-    }
+      for j <- 0 until t do row(j) = exps(j) / total
 
     val y = Array.tabulate(bs, t, dh) { (b, i, h) =>
       (0 until t).map(j => weights(b)(i)(j) * v(b)(j)(h)).sum
     }
 
     (weights, y)
-  }
+  end reference
 
-  private def perturbPosition(x: Tensor, position: Int, delta: Double): Tensor = {
+  private def perturbPosition(x: Tensor, position: Int, delta: Double): Tensor =
     val bs = x.shape(0)
     val t = x.shape(1)
     val dm = x.shape(2)
@@ -116,7 +112,6 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     }
 
     Tensor.make(data, Array(bs, t, dm))
-  }
 
   // ---- forward ----
 
@@ -127,14 +122,14 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     val y = att.forward(x)
     val (_, expected) = reference(att, x)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; h <- 0 until dHead)
+    for b <- 0 until batchSize; t <- 0 until seqLen; h <- 0 until dHead do
       withClue(s"posicao (b=$b, t=$t, h=$h): ") {
         y.get(b, t, h) shouldBe expected(b)(t)(h) +- 1e-12
       }
   }
 
   it should "produce output of shape (batchSize, seqLen, dHead), for varied dimensions" in {
-    for ((bs, t, dm, dh) <- Seq((1, 1, 1, 1), (1, 5, 3, 2), (4, 2, 6, 3), (2, 7, 3, 5))) {
+    for (bs, t, dm, dh) <- Seq((1, 1, 1, 1), (1, 5, 3, 2), (4, 2, 6, 3), (2, 7, 3, 5)) do
       val y = Attention(dm, dh).forward(randomSequence(bs, t, dm))
 
       withClue(s"(batchSize=$bs, seqLen=$t, dModel=$dm, dHead=$dh): ") {
@@ -143,7 +138,6 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
         y.shape(1) shouldBe t
         y.shape(2) shouldBe dh
       }
-    }
   }
 
   it should "accept a non-contiguous input" in {
@@ -167,7 +161,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     val y = att.forward(x)
     val yContiguous = att.forward(same)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; h <- 0 until dHead)
+    for b <- 0 until batchSize; t <- 0 until seqLen; h <- 0 until dHead do
       withClue(s"posicao (b=$b, t=$t, h=$h): ") {
         y.get(b, t, h) shouldBe yContiguous.get(b, t, h) +- 1e-12
       }
@@ -188,16 +182,18 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
 
     ps.size shouldBe 5
 
-    for (i <- Seq(qWeight, kWeight, vWeight)) withClue(s"peso $i: ") {
-      ps(i).rank shouldBe 2
-      ps(i).shape(0) shouldBe dModel
-      ps(i).shape(1) shouldBe dHead
-    }
+    for i <- Seq(qWeight, kWeight, vWeight) do
+      withClue(s"peso $i: ") {
+        ps(i).rank shouldBe 2
+        ps(i).shape(0) shouldBe dModel
+        ps(i).shape(1) shouldBe dHead
+      }
 
-    for (i <- Seq(qBias, vBias)) withClue(s"vies $i: ") {
-      ps(i).rank shouldBe 1
-      ps(i).shape(0) shouldBe dHead
-    }
+    for i <- Seq(qBias, vBias) do
+      withClue(s"vies $i: ") {
+        ps(i).rank shouldBe 1
+        ps(i).shape(0) shouldBe dHead
+      }
   }
 
   it should "mark every parameter as requiring gradient" in {
@@ -228,7 +224,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     val y = att.forward(x)
     val yPerturbed = att.forward(perturbed)
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen - 1; h <- 0 until dHead)
+    for b <- 0 until batchSize; t <- 0 until seqLen - 1; h <- 0 until dHead do
       withClue(s"posicao (b=$b, t=$t, h=$h): ") {
         y.get(b, t, h) shouldBe yPerturbed.get(b, t, h) +- 1e-15
       }
@@ -244,10 +240,10 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     val y = att.forward(x)
     val yPerturbed = att.forward(perturbed)
 
-    val moved = for {
+    val moved = for
       b <- 0 until batchSize
       h <- 0 until dHead
-    } yield Math.abs(y.get(b, seqLen - 1, h) - yPerturbed.get(b, seqLen - 1, h))
+    yield Math.abs(y.get(b, seqLen - 1, h) - yPerturbed.get(b, seqLen - 1, h))
 
     moved.max should be > 1e-6
   }
@@ -263,7 +259,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     val y = att.forward(x)
     val v = project(x, att.parameters(vWeight), Some(att.parameters(vBias)))
 
-    for (b <- 0 until batchSize; h <- 0 until dHead)
+    for b <- 0 until batchSize; h <- 0 until dHead do
       withClue(s"posicao (b=$b, h=$h): ") {
         y.get(b, 0, h) shouldBe v(b)(0)(h) +- 1e-15
       }
@@ -283,7 +279,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
 
     val y = att.forward(x)
 
-    for (b <- 0 until batchSize; t <- 1 until seqLen; h <- 0 until dHead)
+    for b <- 0 until batchSize; t <- 1 until seqLen; h <- 0 until dHead do
       withClue(s"posicao (b=$b, t=$t, h=$h) contra a linha 0: ") {
         y.get(b, t, h) shouldBe y.get(b, 0, h) +- 1e-12
       }
@@ -298,13 +294,12 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     val y = att.forward(x)
     val v = project(x, att.parameters(vWeight), Some(att.parameters(vBias)))
 
-    for (b <- 0 until batchSize; t <- 0 until seqLen; h <- 0 until dHead) {
+    for b <- 0 until batchSize; t <- 0 until seqLen; h <- 0 until dHead do
       val allowed = (0 to t).map(j => v(b)(j)(h))
 
       withClue(s"posicao (b=$b, t=$t, h=$h): ") {
         y.get(b, t, h) should (be >= allowed.min - 1e-12 and be <= allowed.max + 1e-12)
       }
-    }
   }
 
   it should "produce attention rows that sum to 1, with zeros in the masked positions" in {
@@ -312,7 +307,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     val x = randomSequence(batchSize, seqLen, dModel)
     val (weights, _) = reference(att, x)
 
-    for (b <- 0 until batchSize; i <- 0 until seqLen)
+    for b <- 0 until batchSize; i <- 0 until seqLen do
       withClue(s"linha (b=$b, i=$i): ") {
         weights(b)(i).sum shouldBe 1.0 +- 1e-12
         weights(b)(i).drop(i + 1).foreach(w => w shouldBe 0.0)
@@ -339,14 +334,13 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     // gradiente verdadeiro zero reprova na metrica relativa do Gradcheck.
     val w = lossWeights(Array(batchSize, seqLen, dHead))
 
-    for (i <- Seq(qWeight, qBias, kWeight, vWeight, vBias)) {
+    for i <- Seq(qWeight, qBias, kWeight, vWeight, vBias) do
       val att = Attention(dModel, dHead)
       val x = randomSequence(batchSize, seqLen, dModel)
 
       withClue(s"parametro $i: ") {
         Gradcheck.run(att.parameters(i))(_ => (att.forward(x) * w).sum) should be < 1e-5
       }
-    }
   }
 
   it should "give bq a non-trivial gradient" in {
@@ -377,7 +371,7 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
     out.backward()
 
     val wq = att.parameters(qWeight)
-    for (n <- 0 until wq.size)
+    for n <- 0 until wq.size do
       withClue(s"Wq[$n]: ") {
         wq.gradient(n) shouldBe 0.0 +- 1e-15
       }
@@ -400,4 +394,4 @@ class AttentionSpec extends AnyFlatSpec with Matchers {
       randomSequence(batchSize, seqLen, dModel + 1)
     )
   }
-}
+end AttentionSpec

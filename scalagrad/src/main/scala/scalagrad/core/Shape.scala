@@ -4,7 +4,7 @@ package scalagrad.core
   * Wrapper sobre `Array[Int]` — construtor privado ao projeto, só `Shape.apply`
   * (ou métodos que já devolvem `Shape`, como `updated`/`leftPad`) criam instâncias.
   */
-final class Shape private[scalagrad] (private val values: Array[Int]) {
+final class Shape private[scalagrad] (private val values: Array[Int]):
   val rank: Int = values.length
   val size: Int = values.product
 
@@ -57,7 +57,7 @@ final class Shape private[scalagrad] (private val values: Array[Int]) {
     * enquanto `Shape.index` sempre passa `canonicalStrides`. A validação
     * (contagem de dimensões, limites de cada eixo) é a mesma nos dois casos.
     */
-  def linearIndex(dims: Seq[Int], strides: Strides): Int = {
+  def linearIndex(dims: Seq[Int], strides: Strides): Int =
     require(
       dims.length == rank,
       s"All dimensions must be provided. Got ${dims.length} out of $rank."
@@ -73,7 +73,6 @@ final class Shape private[scalagrad] (private val values: Array[Int]) {
     )
 
     dims.indices.foldLeft(0)((acc, i) => acc + dims(i) * strides(i))
-  }
 
   /** Índice linear assumindo strides canônicas (ver `linearIndex`). */
   def index(dims: Int*): Int = linearIndex(dims, canonicalStrides)
@@ -82,7 +81,7 @@ final class Shape private[scalagrad] (private val values: Array[Int]) {
     * dimensão. Não depende de nenhuma instância de `Tensor` — é só função do
     * shape em si (via `canonicalStrides`), por isso mora aqui e não lá.
     */
-  def unravelIndex(idx: Int): Array[Int] = {
+  def unravelIndex(idx: Int): Array[Int] =
     require(
       idx >= 0 && idx <= size - 1,
       s"Index must be between 0 and ${size - 1}."
@@ -91,12 +90,11 @@ final class Shape private[scalagrad] (private val values: Array[Int]) {
     val strides = canonicalStrides
 
     Array.tabulate(rank)(i => (idx / strides(i)) % values(i))
-  }
 
   override def toString: String = values.mkString("Shape(", ", ", ")")
-}
+end Shape
 
-object Shape {
+object Shape:
   def apply(dims: Int*): Shape = Shape(dims.toArray)
   def apply(dims: Array[Int]): Shape = new Shape(dims)
 
@@ -104,7 +102,7 @@ object Shape {
     * regra de broadcasting: cada par de dimensões deve ser igual, ou um dos
     * dois deve ser `1`. Retorna o shape resultante (rank = max dos dois ranks).
     */
-  def broadcast(shape1: Shape, shape2: Shape): Shape = {
+  def broadcast(shape1: Shape, shape2: Shape): Shape =
     val shape1B = shape1.padTo(shape2.rank, 1)
     val shape2B = shape2.padTo(shape1.rank, 1)
     val zipped = shape1B.zip(shape2B)
@@ -115,5 +113,3 @@ object Shape {
     )
 
     Shape(zipped.map((a, b) => Math.max(a, b)))
-  }
-}

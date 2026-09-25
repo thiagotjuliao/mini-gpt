@@ -13,7 +13,7 @@ final class GPT(
     val contextLength: Int,
     val expansion: Int = 4,
     rng: Random = new Random()
-) {
+):
   def this(config: GPTConfig, rng: Random) = this(
     config.vocabSize,
     config.dModel,
@@ -58,7 +58,7 @@ final class GPT(
   // A `Embedding` ja checa as duas condicoes, e a duplicacao se paga na
   // mensagem: quem chamou `GPT.forward` precisa ler o nome do que chamou.
   // Mesma decisao da `TransformerBlock` (ver theory/14-transformer-block §7).
-  private def validate(tokens: Tensor): Unit = {
+  private def validate(tokens: Tensor): Unit =
     require(
       tokens.rank == 2,
       s"The input tensor for this model must have 2 dimensions (batchSize, seqLen) of token indices, " +
@@ -70,9 +70,8 @@ final class GPT(
       s"Cannot run a sequence of length ${tokens.shape(1)}: " +
         s"the model context length is $contextLength."
     )
-  }
 
-  def forward(tokens: Tensor): Tensor = {
+  def forward(tokens: Tensor): Tensor =
     validate(tokens)
 
     head.forward(
@@ -80,5 +79,4 @@ final class GPT(
         blocks.foldLeft(embedding.forward(tokens))((x, b) => b.forward(x))
       )
     )
-  }
-}
+end GPT

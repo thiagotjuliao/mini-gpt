@@ -11,7 +11,7 @@ package scalagrad.core
   * tornar impossível sobrescrever um gradiente por engano em vez de acumular
   * (`+=`), que é o bug silencioso que quebraria grafos com tensores reusados.
   */
-final class Gradient private[scalagrad] (private val values: Array[Double]) {
+final class Gradient private[scalagrad] (private val values: Array[Double]):
   def apply(i: Int): Double = values(i)
   def toArray: Array[Double] = values.clone()
   def length: Int = values.length
@@ -27,26 +27,24 @@ final class Gradient private[scalagrad] (private val values: Array[Double]) {
     * isso, um array curto acumularia até a metade e só então lançaria, deixando
     * o gradiente num estado parcial.
     */
-  def accumulateAll(deltas: Array[Double]): Unit = {
+  def accumulateAll(deltas: Array[Double]): Unit =
     require(
       deltas.length == values.length,
       s"Expected ${values.length} deltas to accumulate, but got ${deltas.length}."
     )
 
     values.indices.foreach(i => accumulate(i, deltas(i)))
-  }
 
   /** Mesma coisa, sem materializar um array intermediário -- evita o `.clone()`
     * que `toArray` faria só pra ser lido posição a posição.
     */
-  def accumulateAll(other: Gradient): Unit = {
+  def accumulateAll(other: Gradient): Unit =
     require(
       other.length == values.length,
       s"Expected a gradient of length ${values.length}, but got ${other.length}."
     )
 
     values.indices.foreach(i => accumulate(i, other(i)))
-  }
 
   /** Multiplica todas as posições por `factor`.
     *
@@ -66,9 +64,9 @@ final class Gradient private[scalagrad] (private val values: Array[Double]) {
   def seed(): Unit = values.mapInPlace(_ => 1.0)
 
   override def toString: String = values.mkString("Gradient(", ", ", ")")
-}
+end Gradient
 
-object Gradient {
+object Gradient:
 
   /** Um gradiente tem exatamente uma posição por elemento do tensor, indexada
     * canonicamente. Preferir esta sobrecarga: passar `data.length` em vez de
@@ -79,4 +77,3 @@ object Gradient {
   def zeros(n: Int): Gradient = new Gradient(Array.fill(n)(0.0))
 
   private[scalagrad] def apply(values: Array[Double]): Gradient = new Gradient(values)
-}

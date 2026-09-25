@@ -8,7 +8,7 @@ import scalagrad.gradcheck.Gradcheck
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class GPTSpec extends AnyFlatSpec with Matchers {
+class GPTSpec extends AnyFlatSpec with Matchers:
 
   // Todas distintas entre si: um eixo trocado sobrevive a qualquer
   // coincidencia. contextLength > seqLen de proposito, pra que o teto da
@@ -42,38 +42,33 @@ class GPTSpec extends AnyFlatSpec with Matchers {
       Array(batchSize, seqLen)
     )
 
-  private def lossWeights(shape: Array[Int]): Tensor = {
+  private def lossWeights(shape: Array[Int]): Tensor =
     val size = shape.product
     Tensor.make(Array.tabulate(size)(i => 0.3 + 0.7 * Math.sin(i * 1.7)), shape)
-  }
 
-  private def maxDifference(a: Tensor, b: Tensor): Double = {
+  private def maxDifference(a: Tensor, b: Tensor): Double =
     a.shape.toArray shouldBe b.shape.toArray
 
     (0 until a.size)
       .map(i => Math.abs(a.get(a.unravelIndex(i)*) - b.get(b.unravelIndex(i)*)))
       .max
-  }
 
   /** O modelo remontado a partir dos proprios campos. Vale a ressalva da
     * Etapa 14: uma referencia feita dos campos do objeto herda os erros que
     * estao NOS campos -- por isso os testes de formato e de contagem, que
     * olham de fora, sao indispensaveis aqui.
     */
-  private def reference(m: GPT, tokens: Tensor): Tensor = {
+  private def reference(m: GPT, tokens: Tensor): Tensor =
     val x = m.blocks.foldLeft(m.embedding.forward(tokens))((acc, b) => b.forward(acc))
     m.head.forward(m.lnFinal.forward(x))
-  }
 
-  private def withBlocksReversed(m: GPT, tokens: Tensor): Tensor = {
+  private def withBlocksReversed(m: GPT, tokens: Tensor): Tensor =
     val x = m.blocks.reverse.foldLeft(m.embedding.forward(tokens))((acc, b) => b.forward(acc))
     m.head.forward(m.lnFinal.forward(x))
-  }
 
-  private def withoutFinalNorm(m: GPT, tokens: Tensor): Tensor = {
+  private def withoutFinalNorm(m: GPT, tokens: Tensor): Tensor =
     val x = m.blocks.foldLeft(m.embedding.forward(tokens))((acc, b) => b.forward(acc))
     m.head.forward(x)
-  }
 
   /** A formula da §7 do capitulo, generalizada no fator de expansao: o
     * `12·d² + 11·d` de la vale para `expansion = 4`, e a suite roda com 2.
@@ -106,11 +101,12 @@ class GPTSpec extends AnyFlatSpec with Matchers {
   it should "preserve that contract across varied dimensions" in {
     val cases = Seq((1, 1, 2, 1, 1, 3, 4), (3, 4, 4, 2, 2, 5, 6), (2, 6, 6, 3, 3, 9, 6))
 
-    for ((b, t, d, h, l, v, c) <- cases) withClue(s"B=$b T=$t d=$d heads=$h L=$l V=$v ctx=$c: ") {
-      val logits = model(l, v, d, h, c).forward(randomTokens(b, t, v))
+    for (b, t, d, h, l, v, c) <- cases do
+      withClue(s"B=$b T=$t d=$d heads=$h L=$l V=$v ctx=$c: ") {
+        val logits = model(l, v, d, h, c).forward(randomTokens(b, t, v))
 
-      logits.shape.toArray shouldBe Array(b, t, v)
-    }
+        logits.shape.toArray shouldBe Array(b, t, v)
+      }
   }
 
   it should "match the composition of its own pieces" in {
@@ -173,7 +169,7 @@ class GPTSpec extends AnyFlatSpec with Matchers {
     val a = gpt.forward(original)
     val b = gpt.forward(lastChanged)
 
-    for (t <- 0 until seqLen - 1; v <- 0 until vocabSize)
+    for t <- 0 until seqLen - 1; v <- 0 until vocabSize do
       withClue(s"logit (t=$t, v=$v): ") {
         b.get(0, t, v) shouldBe a.get(0, t, v) +- 1e-12
       }
@@ -209,19 +205,28 @@ class GPTSpec extends AnyFlatSpec with Matchers {
   it should "total V·d + C·d + L·bloco + 2d + d·V" in {
     val configs = Seq((7, 8, 2, 5, 2), (5, 4, 1, 3, 4), (13, 16, 3, 9, 1), (6, 8, 2, 4, 4))
 
-    for ((v, d, l, c, e) <- configs) withClue(s"V=$v d=$d L=$l ctx=$c expansion=$e: ") {
-      val gpt =
-        model(nLayers = l, vocabSize = v, dModel = d, nHeads = 2, contextLength = c, expansion = e)
+    for (v, d, l, c, e) <- configs do
+      withClue(s"V=$v d=$d L=$l ctx=$c expansion=$e: ") {
+        val gpt =
+          model(
+            nLayers = l,
+            vocabSize = v,
+            dModel = d,
+            nHeads = 2,
+            contextLength = c,
+            expansion = e
+          )
 
-      gpt.parameters.map(_.size).sum shouldBe parameterCount(v, d, l, c, e)
-    }
+        gpt.parameters.map(_.size).sum shouldBe parameterCount(v, d, l, c, e)
+      }
   }
 
   it should "reduce to 12·dModel² + 11·dModel per block with the default expansion" in {
     // a forma canonica da §7, que so vale para expansion = 4
-    for (d <- Seq(4, 8, 128)) withClue(s"dModel=$d: ") {
-      blockCount(d, 4) shouldBe 12 * d * d + 11 * d
-    }
+    for d <- Seq(4, 8, 128) do
+      withClue(s"dModel=$d: ") {
+        blockCount(d, 4) shouldBe 12 * d * d + 11 * d
+      }
   }
 
   it should "put 96% of the tiny configuration in the stack" in {
@@ -253,13 +258,14 @@ class GPTSpec extends AnyFlatSpec with Matchers {
     val w = lossWeights(Array(2, 3, 5))
     val size = GPT(5, 4, 2, 1, 4, expansion, rng).parameters.size
 
-    for (i <- 0 until size) {
+    for i <- 0 until size do
       val gpt = GPT(5, 4, 2, 1, 4, expansion, rng)
 
       withClue(s"parametro $i de $size: ") {
-        Gradcheck.run(gpt.parameters(i), eps = 1e-6)(_ => (gpt.forward(tokens) * w).sum) should be < 1e-5
+        Gradcheck.run(gpt.parameters(i), eps = 1e-6)(_ =>
+          (gpt.forward(tokens) * w).sum
+        ) should be < 1e-5
       }
-    }
   }
 
   // ---- validacao de entrada ----
@@ -272,7 +278,8 @@ class GPTSpec extends AnyFlatSpec with Matchers {
 
   "GPT.forward" should "reject an input that is not rank 2" in {
     val gpt = model()
-    val wrongRank = Tensor.make(Array.fill(batchSize * seqLen * dModel)(0.0), Array(batchSize, seqLen, dModel))
+    val wrongRank =
+      Tensor.make(Array.fill(batchSize * seqLen * dModel)(0.0), Array(batchSize, seqLen, dModel))
 
     val error = intercept[IllegalArgumentException](gpt.forward(wrongRank))
 
@@ -309,11 +316,10 @@ class GPTSpec extends AnyFlatSpec with Matchers {
     iguais shouldBe false
   }
 
-  private def desvioPadrao(t: Tensor): Double = {
+  private def desvioPadrao(t: Tensor): Double =
     val v = t.toArray
     val media = v.sum / v.length
     Math.sqrt(v.map(x => (x - media) * (x - media)).sum / v.length)
-  }
 
   "the residual scale" should "be 1/sqrt(2 * nLayers)" in {
     // os tres valores da tabela de theory/15-gpt-model §6
@@ -346,10 +352,9 @@ class GPTSpec extends AnyFlatSpec with Matchers {
     val dModel = 32
     val nLayers = 8
 
-    val entrada = {
+    val entrada =
       val r = new Random(1)
       Tensor.make(Array.fill(2 * 6 * dModel)(r.nextGaussian()), Array(2, 6, dModel))
-    }
 
     def pilha(escala: Double): Double = Tensor.noGrad {
       val blocos = List.fill(nLayers)(TransformerBlock(dModel, 4, 4, new Random(7), escala))
@@ -361,4 +366,4 @@ class GPTSpec extends AnyFlatSpec with Matchers {
 
     comEscala should be < semEscala / 3
   }
-}
+end GPTSpec

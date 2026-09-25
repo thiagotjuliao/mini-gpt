@@ -3,8 +3,8 @@ package gpt.loss
 import scalagrad.core.Tensor
 import scalagrad.ops.tensor.*
 
-object CrossEntropy {
-  def apply(logits: Tensor, targets: Tensor): Tensor = {
+object CrossEntropy:
+  def apply(logits: Tensor, targets: Tensor): Tensor =
     require(
       logits.rank == 3,
       s"logits must have 3 dimensions (batchSize, seqLen, vocabSize), but got rank ${logits.rank}."
@@ -48,7 +48,7 @@ object CrossEntropy {
 
     val N = Tensor.make(Array(targets.size), Array(1))
     (logits.logSoftmax(2) * onehotT).sum.neg / N
-  }
+  end apply
 
   def perplexity(loss: Tensor): Double = Math.exp(loss.get(0))
-}
+end CrossEntropy
