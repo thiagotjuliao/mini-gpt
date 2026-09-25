@@ -122,6 +122,13 @@
   // takes the prompt out of the loop.
   "metals.autoImportBuilds": "all",
 
+  // The Metals server version is the one the installed extension ships with —
+  // the only one it is guaranteed to work with — so `metals.serverVersion` is
+  // deliberately left unset. Upgrades arrive with the extension. A user setting
+  // of "install" would otherwise download a new server, often a SNAPSHOT, on
+  // every start; a workspace setting wins over it.
+  "metals.suggestLatestUpgrade": "off",
+
   // Metals formats through the workspace's own .scalafmt.conf, so save-time
   // formatting produces exactly what `sbt scalafmtAll` produces and what
   // `scalafmtCheckAll` verifies. Scoped to Scala on purpose: Markdown here is
