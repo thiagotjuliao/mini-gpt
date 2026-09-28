@@ -15,7 +15,7 @@ lazy val scalagrad = project
   .settings(
     name := "scalagrad",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.2.19" % Test
+      "org.scalatest" %% "scalatest" % "3.2.20" % Test
     )
   )
 
@@ -25,7 +25,7 @@ lazy val gpt = project
   .settings(
     name := "gpt",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.2.19" % Test
+      "org.scalatest" %% "scalatest" % "3.2.20" % Test
     ),
     // Sem isto o `gpt.cli.chat` recebe EOF na primeira leitura e encerra na
     // hora: o sbt guarda o proprio stdin e nao o repassa a um `run` nao forkado.
