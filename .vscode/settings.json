@@ -122,6 +122,18 @@
   // takes the prompt out of the loop.
   "metals.autoImportBuilds": "all",
 
+  // Metals compiles through sbt itself instead of Bloop. Bloop works from a
+  // snapshot of the build exported by sbt-bloop, and the snapshot leaves the
+  // build's own logic behind: source generators never run again (sbt-bloop
+  // 2.1.2 exports none), and settings such as `Test / incOptions` are not
+  // carried over. A build that relies on either — scala-type-programming
+  // regenerates a stamp so that specs recompile when the code their
+  // compile-time snippets check changes — then gives one answer in the editor
+  // and another in `sbt test`. Through sbt the two agree, at the price of a
+  // slower import and an sbt JVM kept running. A workspace that already uses
+  // Bloop may keep it; "Metals: Switch build server" moves it over.
+  "metals.defaultBspToBuildTool": true,
+
   // The Metals server version is the one the installed extension ships with —
   // the only one it is guaranteed to work with — so `metals.serverVersion` is
   // deliberately left unset. Upgrades arrive with the extension. A user setting
