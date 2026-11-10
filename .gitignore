@@ -33,6 +33,10 @@ project/project/
 .metals/
 metals.sbt
 *.class
+# Written at the root when Metals uses sbt as its build server
+# (metals.defaultBspToBuildTool), next to .bsp/sbt.json.
+/sbt-launch.jar
+/build.sbt.semanticdb
 
 # --- Metals worksheets ---
 # Scratch by default. A project that keeps some adds a negation below, e.g.

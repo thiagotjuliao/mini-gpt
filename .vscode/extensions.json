@@ -13,6 +13,11 @@
     // TODO does not read like an ordinary note.
     "aaron-bond.better-comments",
 
+    // Renders ```mermaid blocks in the Markdown preview, as GitHub does; the
+    // built-in preview shows them as code. Design notes and theory documents
+    // draw their state and sequence diagrams that way.
+    "bierner.markdown-mermaid",
+
     // Scala 3 language server: type inference, Scaladoc hovers, code lenses.
     "scalameta.metals",
   ]

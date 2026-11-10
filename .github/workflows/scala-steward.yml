@@ -8,8 +8,11 @@
 # job runs and cannot open anything.
 #
 # Pull requests opened with the default token do not trigger other workflows,
-# so CI does not run on them by itself: close and reopen one, or push to it,
-# to get the verify run before merging.
+# so CI would not run on them. A repository secret SCALA_STEWARD_TOKEN — a
+# fine-grained personal access token with Contents and Pull requests read and
+# write on the repository — opens them as its owner instead, and CI runs. Until
+# it is set, the default token is used: close and reopen a pull request, or
+# push to it, to get the verify run before merging.
 name: scala-steward
 
 on:
@@ -33,3 +36,5 @@ jobs:
       - uses: sbt/setup-sbt@v1
 
       - uses: scala-steward-org/scala-steward-action@v2
+        with:
+          github-token: ${{ secrets.SCALA_STEWARD_TOKEN || github.token }}
